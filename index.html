@@ -78,6 +78,11 @@ button{font:inherit;font-weight:700;border:none;border-radius:9px;padding:11px 2
 .qlink:hover .qimg{border-color:var(--yellow);box-shadow:0 4px 14px rgba(253,197,0,.3)}
 .qlink span{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
 .qlink:hover span{color:var(--blue)}
+.qbtn{display:inline-block;margin:0 0 16px;padding:10px 18px;border-radius:9px;
+  background:linear-gradient(135deg,var(--yellow),var(--yellow-d));color:var(--blue-d);
+  font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 3px 10px rgba(253,197,0,.4)}
+.qbtn:hover{background:linear-gradient(135deg,var(--blue),var(--blue-d));color:#fff;
+  box-shadow:0 4px 14px rgba(27,76,158,.35)}
 
 /* หน้าขอบคุณ */
 .thanks{text-align:center}
@@ -213,9 +218,14 @@ const HEADCOUNT = {
 // จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
 const QIMG = {
   1: ["q1.jpg"],
-  2: ["q2.jpg"],
+  2: ["q2-1.jpg", "q2.jpg"],
   4: ["q4.jpg"],
   5: ["q5-1.jpg", "q5-2.jpg"],
+};
+
+// ลิงก์ระบบจริงประกอบคำถาม (เปิดแท็บใหม่ ไม่ให้หลุดจากแบบประเมินที่กรอกค้างไว้)
+const QLINK = {
+  4: { url: "https://snap-eco.vercel.app/", label: "เปิดระบบรายงานการใช้พลังงาน real-time" },
 };
 
 // Energy Management Matrix — 6 หัวข้อ × 5 ระดับ (คะแนน 4 ลงมา 0)
@@ -286,6 +296,7 @@ $("#p2").innerHTML = MATRIX.map(([title, levels], i) => `
     ${(QIMG[i+1] ?? []).map(f => `<a class="qlink" href="images/${f}" target="_blank" rel="noopener">
         <img class="qimg" src="images/${f}" alt="เอกสารประกอบข้อ ${i+1} ${title}" loading="lazy" decoding="async">
         <span>คลิกที่ภาพเพื่อดูขนาดเต็ม</span></a>`).join("")}
+    ${QLINK[i+1] ? `<a class="qbtn" href="${QLINK[i+1].url}" target="_blank" rel="noopener">🔗 ${QLINK[i+1].label}</a>` : ""}
     ${levels.map((txt, j) => `<label class="opt"><input type="radio" name="q${i}" value="${4-j}" required><span>ระดับ ${4-j} — ${txt}</span></label>`).join("")}
     <div class="err">กรุณาเลือกคำตอบ</div>
   </div>`).join("") + `
