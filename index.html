@@ -387,10 +387,9 @@ $("#p2").onsubmit = async e => {
   }
   btn.disabled = false; btn.textContent = "ส่งคำตอบ";
 
-  const avg = scores.reduce((a,b)=>a+b,0) / scores.length;
   $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
     MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${scores[i]}</td></tr>`).join("") +
-    `<tr><th>คะแนนเฉลี่ย</th><th>${avg.toFixed(2)} / 4</th></tr></table>`;
+    `</table>`;
   go(3);
 };
 
