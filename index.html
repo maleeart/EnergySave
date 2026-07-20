@@ -115,6 +115,36 @@ select:focus{border-color:var(--blue);outline:none}
 dialog{border:none;border-radius:14px;padding:26px;max-width:90vw;
   box-shadow:0 20px 50px rgba(0,0,0,.3);border-top:6px solid var(--yellow)}
 dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
+
+/* ====== Animations ====== */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes fadeInLeft{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:none}}
+@keyframes engyInM{from{opacity:0;transform:translateX(50%) translateY(22px)}to{opacity:1;transform:translateX(50%)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes shimmer{from{opacity:.55;transform:scale(1)}to{opacity:1;transform:scale(1.05)}}
+
+/* shimmer แสงบน hero */
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 18% 32%,rgba(253,197,0,.18) 0%,transparent 48%),
+             radial-gradient(circle at 78% 68%,rgba(255,255,255,.09) 0%,transparent 36%);
+  animation:shimmer 4s ease-in-out infinite alternate}
+
+.hero .logo{animation:fadeInLeft .55s ease-out both}
+.hero h1{animation:fadeInUp .6s ease-out .2s both}
+.hero p{animation:fadeInUp .5s ease-out .38s both}
+.hero .engy{animation:slideInRight .65s cubic-bezier(.22,1,.36,1) .1s both,float 3.5s ease-in-out 1s infinite}
+.steps{animation:fadeInUp .5s ease-out .5s both}
+#p1{animation:fadeInUp .6s ease-out .42s both}
+
+/* admin full-page mode — ซ่อน survey ทั้งหมด แสดงเฉพาะ admin */
+.admin-mode .hero,.admin-mode .steps,.admin-mode #p1,.admin-mode #p2,
+.admin-mode #p3,.admin-mode .adminbar{display:none!important}
+.admin-mode #admin{display:block!important}
+
+@media(max-width:620px){
+  .hero .engy{animation:engyInM .65s cubic-bezier(.22,1,.36,1) .1s both}
+}
 </style>
 </head>
 <body>
@@ -386,13 +416,16 @@ $("#pw").onclose = async () => {
     rows = await loadRows($("#pwIn").value);
     adminPw = $("#pwIn").value;
     render();
-    $("#admin").classList.remove("hidden");
-    $("#admin").scrollIntoView();
+    document.body.classList.add("admin-mode");
+    window.scrollTo({ top: 0, behavior: "instant" });
   } catch (err) {
     alert("เข้าสู่ระบบไม่สำเร็จ: " + err.message);
   }
 };
-$("#closeAdmin").onclick = () => $("#admin").classList.add("hidden");
+$("#closeAdmin").onclick = () => {
+  document.body.classList.remove("admin-mode");
+  $("#admin").classList.add("hidden");
+};
 $("#filter").onchange = render;
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
