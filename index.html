@@ -94,7 +94,14 @@ tbody tr:nth-child(even),table tr:nth-child(even){background:#f7fafd}
 select{padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;background:#fbfcfe}
 select:focus{border-color:var(--blue);outline:none}
 #chart svg{display:block;min-width:660px}
-.hero-num{font-size:34px;font-weight:800;color:var(--blue);line-height:1.1}
+/* การ์ดตัวเลขสรุป — ตัวเลขคือคำตอบ ไม่ต้องทำเป็นกราฟ */
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.tile{background:#f7fafd;border:1.5px solid var(--line);border-left:5px solid var(--yellow);
+  border-radius:11px;padding:15px 17px}
+.tile .k{font-size:13px;color:var(--muted);margin-bottom:5px}
+.tile .v{font-size:31px;font-weight:800;color:var(--blue);line-height:1.15}
+.tile .v small{font-size:17px;font-weight:600;color:var(--muted)}
+.tile .note{font-size:12px;color:var(--muted);margin-top:3px}
 
 .adminbar{text-align:center;margin-top:26px}
 .adminbar a{color:var(--muted);font-size:13px;text-decoration:none;border-bottom:1px dotted var(--muted)}
@@ -161,13 +168,17 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
   <!-- admin -->
   <div id="admin" class="card hidden">
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
-    <div class="bar" style="justify-content:flex-start">
-      <button class="primary" id="csv">ดาวน์โหลด CSV</button>
+    <div class="bar" style="justify-content:flex-start;flex-wrap:wrap">
+      <button class="primary" id="xlsx">export Excel</button>
+      <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
       <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
       <button class="ghost" id="closeAdmin">ปิด</button>
     </div>
     <label style="margin-top:18px">กรองตามสังกัด</label>
     <select id="filter" style="width:auto;min-width:220px"></select>
+
+    <h3 class="secTitle">ความครอบคลุมของการประเมิน</h3>
+    <div class="tiles" id="tiles"></div>
 
     <h3 class="secTitle">กราฟสรุป Energy Management Matrix</h3>
     <div id="chart" class="scroll"></div>
@@ -190,6 +201,13 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 
 <script>
 const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อรอ.","อคม.","อหข.","อื่นๆ"];
+
+// จำนวนบุคลากรทั้งหมดของแต่ละสังกัด — ใช้เป็นตัวหารของ "ร้อยละที่ประเมินแล้ว"
+// ★ แก้ตัวเลขตรงนี้ให้ตรงกับกำลังพลจริง
+// ปล่อยเป็น 0 = ยังไม่ได้ตั้งค่า ระบบจะแสดง "—" แทนร้อยละ (ไม่เดาตัวเลขให้)
+const HEADCOUNT = {
+  "สก.ชธธ.": 0, "อบค.": 0, "อบฟ.": 0, "อบย.": 0, "อรอ.": 0, "อคม.": 0, "อหข.": 0,
+};
 
 // รูป/เอกสารประกอบแต่ละข้อ — ระบุชื่อไฟล์ตรง ๆ เพราะชื่อไฟล์ไม่ได้เรียงเป็นแบบแผน
 // จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
@@ -347,6 +365,22 @@ $("#closeAdmin").onclick = () => $("#admin").classList.add("hidden");
 $("#filter").onchange = render;
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
+
+// ความครอบคลุม — นับ "คน" ด้วยรหัสพนักงานไม่ซ้ำ เผื่อมีคนตอบซ้ำหลายครั้ง
+function coverage(list, unit){
+  const scope = unit ? [unit] : Object.keys(HEADCOUNT);
+  const people = new Set(list.map(r => r.empid)).size;
+  const total  = scope.reduce((s, u) => s + (HEADCOUNT[u] ?? 0), 0);
+  return {
+    people, total,
+    deptDone: new Set(list.map(r => r.unit).filter(u => u in HEADCOUNT)).size,
+    deptAll: scope.length,
+    pct: total > 0 ? (people / total) * 100 : null,   // null = ยังไม่ได้ตั้ง HEADCOUNT
+  };
+}
+
+const tile = (k, v, note = "") =>
+  `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${note ? `<div class="note">${note}</div>` : ""}</div>`;
 const avgOf = list => MATRIX.map((_, i) =>
   list.length ? list.reduce((s, r) => s + r.scores[i], 0) / list.length : 0);
 
@@ -393,7 +427,21 @@ function render(){
     ...units.map(u => `<option value="${u}">${u} (${rows.filter(r=>r.unit===u).length} คน)</option>`)].join("");
   $("#filter").value = units.includes(keep) ? keep : "";
 
-  const list = keep && units.includes(keep) ? rows.filter(r => r.unit === keep) : rows;
+  const sel = keep && units.includes(keep) ? keep : "";
+  const list = sel ? rows.filter(r => r.unit === sel) : rows;
+
+  const c = coverage(list, sel);
+  $("#tiles").innerHTML =
+    tile("จำนวนฝ่ายที่ประเมิน", `${c.deptDone}<small> / ${c.deptAll} ฝ่าย</small>`) +
+    tile("จำนวนบุคลากรที่ประเมิน",
+         c.total ? `${c.people}<small> / ${c.total} คน</small>` : `${c.people}<small> คน</small>`,
+         c.total ? "" : "ยังไม่ได้ตั้งค่ากำลังพลใน HEADCOUNT") +
+    tile("คิดเป็นร้อยละของบุคลากร",
+         c.pct === null ? "—" : `${c.pct.toFixed(1)}<small> %</small>`,
+         c.pct === null ? "ต้องกรอกกำลังพลก่อนจึงคำนวณได้" : "") +
+    tile("จำนวนคำตอบทั้งหมด", `${list.length}<small> รายการ</small>`,
+         list.length > c.people ? `มีผู้ตอบซ้ำ ${list.length - c.people} รายการ` : "");
+
   const avgs = avgOf(list);
   $("#chart").innerHTML = emmChart(avgs, list.length);
 
@@ -419,6 +467,22 @@ $("#csv").onclick = () => {
   const blob = new Blob(["﻿" + [head, ...body].map(r=>r.map(q).join(",")).join("\r\n")], {type:"text/csv"});
   const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(blob), download: "energy-survey.csv"});
   a.click(); URL.revokeObjectURL(a.href);
+};
+
+$("#xlsx").onclick = async e => {
+  const btn = e.target;
+  btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์...";
+  try {
+    const q = $("#filter").value ? "?unit=" + encodeURIComponent($("#filter").value) : "";
+    const r = await fetch("/api/export" + q, {headers: {"x-admin-password": adminPw}});
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "สร้างไฟล์ไม่สำเร็จ");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(await r.blob()),
+      download: `ผลประเมิน-EMM-${new Date().toISOString().slice(0,10)}.xlsx`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  } catch (err) { alert("export ไม่สำเร็จ: " + err.message); }
+  btn.disabled = false; btn.textContent = "export Excel";
 };
 
 // ponytail: ไม่มีปุ่มลบข้อมูล — ข้อมูลรวมของทุกคน ลบพลาดแล้วกู้ไม่ได้
