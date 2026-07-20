@@ -221,7 +221,7 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       <input type="text" id="unitOther" class="hidden" placeholder="โปรดระบุ" style="margin-top:8px">
       <div class="err">กรุณาเลือกสังกัด</div>
     </div>
-    <div class="bar"><span></span><button class="primary" type="submit">ถัดไป</button></div>
+    <div class="bar"><button class="ghost" type="button" onclick="go(0)">← หน้าหลัก</button><button class="primary" type="submit">ถัดไป</button></div>
   </form>
 
   <!-- หน้า 2 -->
@@ -377,7 +377,7 @@ $("#p2").innerHTML = MATRIX.map(([title, levels], i) => `
     ${levels.map((txt, j) => `<label class="opt"><input type="radio" name="q${i}" value="${4-j}" required><span>ระดับ ${4-j} — ${txt}</span></label>`).join("")}
     <div class="err">กรุณาเลือกคำตอบ</div>
   </div>`).join("") + `
-  <div class="bar"><button class="ghost" type="button" id="back">ย้อนกลับ</button><button class="primary" type="submit">ส่งคำตอบ</button></div>`;
+  <div class="bar"><div style="display:flex;gap:8px"><button class="ghost" type="button" onclick="go(0)">← หน้าหลัก</button><button class="ghost" type="button" id="back">ย้อนกลับ</button></div><button class="primary" type="submit">ส่งคำตอบ</button></div>`;
 
 // ponytail: validate ด้วย HTML constraint API + ข้อความ error ต่อการ์ด แทน validation library
 function valid(form){
