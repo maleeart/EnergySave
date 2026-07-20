@@ -72,7 +72,12 @@ button{font:inherit;font-weight:700;border:none;border-radius:9px;padding:11px 2
 .ghost:hover{border-color:var(--blue);background:#f4f8ff}
 
 .hidden{display:none}
-.qimg{max-width:100%;border:1.5px solid var(--line);border-radius:10px;margin:4px 0 14px;display:block}
+.qlink{display:block;margin:4px 0 16px;text-decoration:none}
+.qimg{max-width:100%;border:1.5px solid var(--line);border-radius:10px;display:block;
+  background:#fbfcfe;transition:border-color .15s,box-shadow .15s}
+.qlink:hover .qimg{border-color:var(--yellow);box-shadow:0 4px 14px rgba(253,197,0,.3)}
+.qlink span{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
+.qlink:hover span{color:var(--blue)}
 
 /* หน้าขอบคุณ */
 .thanks{text-align:center}
@@ -186,6 +191,15 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 <script>
 const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อรอ.","อคม.","อหข.","อื่นๆ"];
 
+// รูป/เอกสารประกอบแต่ละข้อ — ระบุชื่อไฟล์ตรง ๆ เพราะชื่อไฟล์ไม่ได้เรียงเป็นแบบแผน
+// จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
+const QIMG = {
+  1: ["q1.jpg"],
+  2: ["q2.jpg"],
+  4: ["q4.jpg"],
+  5: ["q5-1.jpg", "q5-2.jpg"],
+};
+
 // Energy Management Matrix — 6 หัวข้อ × 5 ระดับ (คะแนน 4 ลงมา 0)
 const MATRIX = [
  ["นโยบายการจัดการพลังงาน",[
@@ -251,7 +265,9 @@ $("#units").onchange = e => {
 $("#p2").innerHTML = MATRIX.map(([title, levels], i) => `
   <div class="card">
     <label>${i+1}. ${title} <span class="req">*</span></label>
-    <img class="qimg" src="images/q${i+1}.png" alt="รูปประกอบข้อ ${i+1}: ${title}" onerror="this.remove()">
+    ${(QIMG[i+1] ?? []).map(f => `<a class="qlink" href="images/${f}" target="_blank" rel="noopener">
+        <img class="qimg" src="images/${f}" alt="เอกสารประกอบข้อ ${i+1} ${title}" loading="lazy" decoding="async">
+        <span>คลิกที่ภาพเพื่อดูขนาดเต็ม</span></a>`).join("")}
     ${levels.map((txt, j) => `<label class="opt"><input type="radio" name="q${i}" value="${4-j}" required><span>ระดับ ${4-j} — ${txt}</span></label>`).join("")}
     <div class="err">กรุณาเลือกคำตอบ</div>
   </div>`).join("") + `
