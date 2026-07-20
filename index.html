@@ -349,17 +349,36 @@ $("#p2").onsubmit = async e => {
 };
 
 // ---- admin (รหัสผ่านตรวจสอบฝั่งเซิร์ฟเวอร์ด้วย env var ADMIN_PASSWORD)
+
+// เซิร์ฟเวอร์อาจตอบกลับมาไม่ใช่ JSON (เช่น หน้า login ของ Vercel หรือ error page)
+// จึงต้องอ่านเป็น text ก่อนแล้วค่อยลองแปลง ไม่งั้น r.json() จะ throw ทับ error จริง
+async function errMsg(r){
+  const t = await r.text().catch(() => "");
+  try { return JSON.parse(t).error ?? `HTTP ${r.status}`; }
+  catch { return `HTTP ${r.status} — เซิร์ฟเวอร์ไม่ได้ตอบเป็น JSON`; }
+}
+
+const loadRows = async pw => {
+  const r = await fetch("/api/responses", {headers: {"x-admin-password": pw}});
+  if (!r.ok) throw new Error(await errMsg(r));
+  return r.json();
+};
+
 $("#adminLink").onclick = e => { e.preventDefault(); $("#pwIn").value = ""; $("#pw").showModal(); };
 $("#pw").onclose = async () => {
   if ($("#pw").returnValue !== "ok") return;
-  const pw = $("#pwIn").value;
-  const r = await fetch("/api/responses", {headers: {"x-admin-password": pw}});
-  if (!r.ok) return alert((await r.json().catch(() => ({}))).error || "เข้าสู่ระบบไม่สำเร็จ");
-  adminPw = pw;
-  rows = await r.json();
-  render();
-  $("#admin").classList.remove("hidden");
-  $("#admin").scrollIntoView();
+  // เปิดไฟล์ตรง ๆ จะเรียก /api/... ไม่ได้ ต้องเข้าผ่าน URL ที่ deploy แล้ว
+  if (location.protocol === "file:")
+    return alert("โหมดผู้ดูแลใช้ได้เฉพาะเมื่อเปิดผ่านเว็บที่ deploy แล้ว\nไม่สามารถใช้จากการเปิดไฟล์ index.html ตรง ๆ ได้");
+  try {
+    rows = await loadRows($("#pwIn").value);
+    adminPw = $("#pwIn").value;
+    render();
+    $("#admin").classList.remove("hidden");
+    $("#admin").scrollIntoView();
+  } catch (err) {
+    alert("เข้าสู่ระบบไม่สำเร็จ: " + err.message);
+  }
 };
 $("#closeAdmin").onclick = () => $("#admin").classList.add("hidden");
 $("#filter").onchange = render;
@@ -475,7 +494,7 @@ $("#xlsx").onclick = async e => {
   try {
     const q = $("#filter").value ? "?unit=" + encodeURIComponent($("#filter").value) : "";
     const r = await fetch("/api/export" + q, {headers: {"x-admin-password": adminPw}});
-    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "สร้างไฟล์ไม่สำเร็จ");
+    if (!r.ok) throw new Error(await errMsg(r));
     const a = Object.assign(document.createElement("a"), {
       href: URL.createObjectURL(await r.blob()),
       download: `ผลประเมิน-EMM-${new Date().toISOString().slice(0,10)}.xlsx`,
@@ -488,10 +507,8 @@ $("#xlsx").onclick = async e => {
 // ponytail: ไม่มีปุ่มลบข้อมูล — ข้อมูลรวมของทุกคน ลบพลาดแล้วกู้ไม่ได้
 // ถ้าต้องลบจริง ใช้ Upstash console หรือค่อยทำ endpoint แยกที่ยืนยันสองชั้น
 $("#refresh").onclick = async () => {
-  const r = await fetch("/api/responses", {headers: {"x-admin-password": adminPw}});
-  if (!r.ok) return alert("โหลดข้อมูลไม่สำเร็จ");
-  rows = await r.json();
-  render();
+  try { rows = await loadRows(adminPw); render(); }
+  catch (err) { alert("โหลดข้อมูลไม่สำเร็จ: " + err.message); }
 };
 </script>
 </body>

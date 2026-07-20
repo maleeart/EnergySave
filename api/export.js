@@ -42,7 +42,6 @@ export default async function handler(req, res) {
     { header: "รหัสพนักงาน", key: "empid", width: 14 },
     { header: "สังกัด", key: "unit", width: 16 },
     ...TOPICS.map((t, i) => ({ header: `${i + 1}. ${t}`, key: "q" + i, width: 13 })),
-    { header: "คะแนนเฉลี่ย", key: "avg", width: 12 },
   ];
   styleHeader(ws.getRow(1));
 
@@ -52,13 +51,12 @@ export default async function handler(req, res) {
       at: new Date(r.at).toLocaleString("th-TH"),
       name: r.name, empid: r.empid, unit: r.unit,
       ...Object.fromEntries(r.scores.map((s, j) => ["q" + j, s])),
-      avg: +(r.scores.reduce((a, b) => a + b, 0) / 6).toFixed(2),
     });
     row.font = FONT;
     row.alignment = { vertical: "top", wrapText: true };   // ข้อความยาวขึ้นบรรทัดใหม่ ไม่ล้นออกนอกช่อง
     row.eachCell(c => (c.border = BORDER));
     if (i % 2) row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ZEBRA } };
-    ["no", "empid", ...TOPICS.map((_, j) => "q" + j), "avg"]
+    ["no", "empid", ...TOPICS.map((_, j) => "q" + j)]
       .forEach(k => (row.getCell(k).alignment = { horizontal: "center", vertical: "top" }));
   });
   if (rows.length) ws.autoFilter = { from: "A1", to: { row: 1, column: ws.columnCount } };
