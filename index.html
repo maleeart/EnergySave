@@ -201,7 +201,7 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     </div>
   </div>
 
-  <p class="adminbar"><a href="#" id="adminLink">โหมดผู้ดูแลระบบ</a></p>
+  <p class="adminbar"><a href="#" id="adminLink">ดูผลการประเมิน</a></p>
 
   <!-- admin -->
   <div id="admin" class="card hidden">
@@ -411,6 +411,7 @@ const loadRows = async pw => {
 };
 
 $("#adminLink").onclick = e => { e.preventDefault(); $("#pwIn").value = ""; $("#pw").showModal(); };
+$("#pwIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("#pw").close("ok"); } });
 $("#pw").onclose = async () => {
   if ($("#pw").returnValue !== "ok") return;
   // เปิดไฟล์ตรง ๆ จะเรียก /api/... ไม่ได้ ต้องเข้าผ่าน URL ที่ deploy แล้ว
