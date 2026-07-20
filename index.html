@@ -115,6 +115,9 @@ select:focus{border-color:var(--blue);outline:none}
 dialog{border:none;border-radius:14px;padding:26px;max-width:90vw;
   box-shadow:0 20px 50px rgba(0,0,0,.3);border-top:6px solid var(--yellow)}
 dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
+.del-btn{padding:3px 9px;font-size:12px;font-weight:600;background:transparent;color:var(--red);
+  border:1px solid var(--red);border-radius:6px;cursor:pointer;transition:.15s}
+.del-btn:hover{background:var(--red);color:#fff}
 
 /* ====== Animations ====== */
 @keyframes fadeInUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
@@ -202,6 +205,7 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 
   <!-- admin -->
   <div id="admin" class="card hidden">
+    <p id="adminLoading" hidden style="text-align:center;padding:24px 0;color:var(--muted)">⏳ กำลังโหลดข้อมูล กรุณารอสักครู่...</p>
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
     <div class="bar" style="justify-content:flex-start;flex-wrap:wrap">
       <button class="primary" id="xlsx">export Excel</button>
@@ -412,14 +416,19 @@ $("#pw").onclose = async () => {
   // เปิดไฟล์ตรง ๆ จะเรียก /api/... ไม่ได้ ต้องเข้าผ่าน URL ที่ deploy แล้ว
   if (location.protocol === "file:")
     return alert("โหมดผู้ดูแลใช้ได้เฉพาะเมื่อเปิดผ่านเว็บที่ deploy แล้ว\nไม่สามารถใช้จากการเปิดไฟล์ index.html ตรง ๆ ได้");
+  adminPw = $("#pwIn").value;
+  document.body.classList.add("admin-mode");
+  window.scrollTo({ top: 0, behavior: "instant" });
+  $("#adminLoading").hidden = false;
   try {
-    rows = await loadRows($("#pwIn").value);
-    adminPw = $("#pwIn").value;
+    rows = await loadRows(adminPw);
     render();
-    document.body.classList.add("admin-mode");
-    window.scrollTo({ top: 0, behavior: "instant" });
   } catch (err) {
+    document.body.classList.remove("admin-mode");
+    adminPw = "";
     alert("เข้าสู่ระบบไม่สำเร็จ: " + err.message);
+  } finally {
+    $("#adminLoading").hidden = true;
   }
 };
 $("#closeAdmin").onclick = () => {
@@ -517,10 +526,11 @@ function render(){
 
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
-    MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th>เฉลี่ย</th></tr>` +
-    rows.map(r => `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
+    MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th>เฉลี่ย</th><th></th></tr>` +
+    rows.map((r,i) => `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
       r.scores.map(s=>`<td>${s}</td>`).join("") +
-      `<td>${(r.scores.reduce((a,b)=>a+b,0)/r.scores.length).toFixed(2)}</td></tr>`).join("");
+      `<td>${(r.scores.reduce((a,b)=>a+b,0)/r.scores.length).toFixed(2)}</td>` +
+      `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`).join("");
 }
 
 $("#csv").onclick = () => {
@@ -550,12 +560,25 @@ $("#xlsx").onclick = async e => {
   btn.disabled = false; btn.textContent = "export Excel";
 };
 
-// ponytail: ไม่มีปุ่มลบข้อมูล — ข้อมูลรวมของทุกคน ลบพลาดแล้วกู้ไม่ได้
-// ถ้าต้องลบจริง ใช้ Upstash console หรือค่อยทำ endpoint แยกที่ยืนยันสองชั้น
 $("#refresh").onclick = async () => {
   try { rows = await loadRows(adminPw); render(); }
   catch (err) { alert("โหลดข้อมูลไม่สำเร็จ: " + err.message); }
 };
+
+async function delRow(i) {
+  const r = rows[i];
+  if (!confirm(`ลบข้อมูลของ "${r.name}" (${r.empid}) ออกจากระบบถาวร?\nการลบไม่สามารถกู้คืนได้`)) return;
+  try {
+    const res = await fetch("/api/delete", {
+      method: "DELETE",
+      headers: { "content-type": "application/json", "x-admin-password": adminPw },
+      body: JSON.stringify({ url: r._blobUrl }),
+    });
+    if (!res.ok) throw new Error(await errMsg(res));
+    rows.splice(i, 1);
+    render();
+  } catch (err) { alert("ลบไม่สำเร็จ: " + err.message); }
+}
 </script>
 </body>
 </html>

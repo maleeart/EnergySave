@@ -13,6 +13,14 @@ export async function readAll() {
   if (globalThis.__blobMock) return [...globalThis.__blobMock];
   const { blobs } = await list({ prefix: PREFIX });
   if (!blobs.length) return [];
-  const rows = await Promise.all(blobs.map(b => fetch(b.url).then(r => r.json())));
+  const rows = await Promise.all(blobs.map(async b => {
+    const data = await fetch(b.url).then(r => r.json());
+    return { ...data, _blobUrl: b.url }; // URL ใช้สำหรับลบ — ไม่ถูก save ลงใน blob
+  }));
   return rows.sort((a, b) => new Date(a.at) - new Date(b.at));
+}
+
+export async function remove(url) {
+  const { del } = await import("@vercel/blob");
+  await del(url);
 }
