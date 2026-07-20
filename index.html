@@ -462,35 +462,59 @@ const avgOf = list => MATRIX.map((_, i) =>
   list.length ? list.reduce((s, r) => s + r.scores[i], 0) / list.length : 0);
 
 // กราฟ EMM ตามรูปแบบ พพ.: 6 หัวข้อ x ระดับ 0-4
-// ponytail: SVG เขียนเอง ~30 บรรทัด แทนการลง chart library ทั้งก้อน
-// สีเดียวไล่ระดับ ไม่ใช่ 6 สี เพราะทั้ง 6 แท่งคือ "ปริมาณ" ตัวเดียวกัน ไม่ใช่คนละชุดข้อมูล
 function emmChart(avgs, n){
   if (!n) return `<p class="muted">ยังไม่มีข้อมูลในกลุ่มที่เลือก</p>`;
-  const W = 720, H = 350, L = 52, R = 16, T = 30, B = 76;
-  const pw = W - L - R, ph = H - T - B, colW = pw / 6, barW = Math.min(62, colW - 16);
-  const y = v => T + ph - (v / 4) * ph;
-  const cx = i => L + colW * i + colW / 2;
 
-  const grid = [0,1,2,3,4].map(v => `
-    <line x1="${L}" y1="${y(v)}" x2="${W-R}" y2="${y(v)}" stroke="#e4eaf3" stroke-width="1"/>
-    <text x="${L-12}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="#5b6779">${v}</text>`).join("");
+  const W=700, H=560, cx=350, cy=275, R=185;
+  const ang = i => i * Math.PI / 3 - Math.PI / 2;
+  const pt  = (r, i) => [+(cx + r*Math.cos(ang(i))).toFixed(2),
+                          +(cy + r*Math.sin(ang(i))).toFixed(2)];
 
-  const bars = avgs.map((v, i) => `
-    <g>
-      <title>${SHORT[i]}: ${v.toFixed(2)} (ระดับ ${Math.round(v)})</title>
-      <rect x="${cx(i)-barW/2}" y="${y(4)}" width="${barW}" height="${ph}" fill="#eef3fa" rx="4"/>
-      <rect x="${cx(i)-barW/2}" y="${y(v)}" width="${barW}" height="${ph-(y(v)-y(4))}" fill="#1B4C9E" rx="4"/>
-      <text x="${cx(i)}" y="${y(v)-9}" text-anchor="middle" font-size="14" font-weight="700" fill="#123566">${v.toFixed(2)}</text>
-      <text x="${cx(i)}" y="${H-52}" text-anchor="middle" font-size="12" fill="#1c2536">${SHORT[i]}</text>
-      <text x="${cx(i)}" y="${H-34}" text-anchor="middle" font-size="11" fill="#5b6779">ระดับ ${Math.round(v)}</text>
-    </g>`).join("");
+  // เส้นกริด hexagon ระดับ 1–4
+  const grid = [1,2,3,4].map(lv => {
+    const r = lv * R / 4;
+    const pts = Array.from({length:6}, (_, i) => pt(r, i));
+    const d = pts.map(([x,y], i) => `${i?'L':'M'}${x},${y}`).join('') + 'Z';
+    const [lx, ly] = pt(r, 0);
+    return `<path d="${d}" fill="none" stroke="${lv===4?'#a0b4cc':'#d3dde8'}" stroke-width="${lv===4?1.5:1}"/>
+    <text x="${+(lx+5).toFixed(1)}" y="${+(ly+4).toFixed(1)}" font-size="10" fill="#8899aa">${lv}</text>`;
+  }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" role="img"
-      aria-label="กราฟ EMM ค่าเฉลี่ยรายหัวข้อ จาก ${n} คน: ${avgs.map((v,i)=>SHORT[i]+" "+v.toFixed(2)).join(", ")}">
-    <text x="${L-38}" y="${T-12}" font-size="12" fill="#5b6779">ระดับ</text>
-    ${grid}
-    <line x1="${L}" y1="${y(0)}" x2="${W-R}" y2="${y(0)}" stroke="#1c2536" stroke-width="2"/>
-    ${bars}
+  // เส้นแกน (spokes)
+  const spokes = Array.from({length:6}, (_, i) => {
+    const [x,y] = pt(R, i);
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#c5d3e8" stroke-width="1"/>`;
+  }).join('');
+
+  // polygon ข้อมูล
+  const dataPts = avgs.map((v, i) => pt(v * R / 4, i));
+  const polyD = dataPts.map(([x,y], i) => `${i?'L':'M'}${x},${y}`).join('') + 'Z';
+
+  // จุดและป้ายคะแนน
+  const dotLabels = dataPts.map(([x, y], i) => {
+    const v = avgs[i];
+    const [lx, ly] = pt(v * R / 4 + 20, i);
+    const anchor = Math.abs(lx - cx) < 6 ? 'middle' : lx > cx ? 'start' : 'end';
+    const lbl = v > 0
+      ? `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="13" font-weight="700" fill="#123566">${v.toFixed(2)}</text>`
+      : '';
+    return `<circle cx="${x}" cy="${y}" r="5" fill="#1B4C9E" stroke="#fff" stroke-width="2"/>${lbl}`;
+  }).join('');
+
+  // ป้ายชื่อหัวข้อ
+  const catLabels = SHORT.map((name, i) => {
+    const [x, y] = pt(R + 36, i);
+    const anchor = Math.abs(x - cx) < 8 ? 'middle' : x > cx ? 'start' : 'end';
+    const dy = i===0 ? -4 : i===3 ? 12 : 4;
+    return `<text x="${x.toFixed(1)}" y="${(+y+dy).toFixed(1)}" text-anchor="${anchor}" font-size="13" fill="#1c2536" font-weight="600">${name}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" xmlns="http://www.w3.org/2000/svg"
+    aria-label="กราฟ EMM ค่าเฉลี่ยรายหัวข้อ จาก ${n} คน">
+    ${grid}${spokes}
+    <path d="${polyD}" fill="rgba(27,76,158,.18)" stroke="#1B4C9E" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dotLabels}${catLabels}
+    <text x="${cx}" y="${H-14}" text-anchor="middle" font-size="12" fill="#8899aa">${n} คน · ค่าเฉลี่ยกลุ่ม</text>
   </svg>`;
 }
 
