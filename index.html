@@ -529,10 +529,9 @@ function render(){
 
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
-    MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th>เฉลี่ย</th><th></th></tr>` +
+    MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th></th></tr>` +
     rows.map((r,i) => `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
       r.scores.map(s=>`<td>${s}</td>`).join("") +
-      `<td>${(r.scores.reduce((a,b)=>a+b,0)/r.scores.length).toFixed(2)}</td>` +
       `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`).join("");
 }
 
