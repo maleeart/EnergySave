@@ -2,9 +2,9 @@ import ExcelJS from "exceljs";
 import { readAll } from "./_blob.js";
 import { authed } from "./_auth.js";
 
-// หัวข้อ EMM — ต้องตรงกับ MATRIX ใน index.html (ชุดนี้เป็นมาตรฐาน พพ. ไม่เปลี่ยน)
 const TOPICS = ["นโยบายการจัดการพลังงาน", "การจัดองค์กร", "การกระตุ้นและสร้างแรงจูงใจ",
                 "ระบบข้อมูลข่าวสาร", "การประชาสัมพันธ์", "การลงทุน"];
+const TOTAL_HEADCOUNT = 1700; // กำลังพล กฟผ. ไทรน้อย ทั้งหมด
 
 const FONT = { name: "TH SarabunPSK", size: 14 };
 const BLUE = "FF1B4C9E", YELLOW = "FFFDC500", ZEBRA = "FFF4F8FF";
@@ -25,6 +25,9 @@ export default async function handler(req, res) {
   const all = await readAll();
   const unit = req.query?.unit || "";
   const rows = unit ? all.filter(r => r.unit === unit) : all;
+
+  const participated = new Set(rows.map(r => r.empid)).size;
+  const pct = TOTAL_HEADCOUNT ? +(participated / TOTAL_HEADCOUNT * 100).toFixed(1) : null;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "แบบประเมินสถานภาพการจัดการพลังงาน กฟผ.";
@@ -61,35 +64,58 @@ export default async function handler(req, res) {
   if (rows.length) ws.autoFilter = { from: "A1", to: { row: 1, column: ws.columnCount } };
 
   // --- ชีต 2: สรุปสำหรับกรอก e-service ---
-  const sum = wb.addWorksheet("สรุปสำหรับ e-service");
-  sum.columns = [
-    { header: "หัวข้อ EMM", key: "topic", width: 40 },
-    { header: "คะแนนเฉลี่ย", key: "avg", width: 15 },
-    { header: "ระดับที่กรอก", key: "lvl", width: 15 },
-  ];
-  styleHeader(sum.getRow(1));
-
   const avgs = TOPICS.map((_, i) =>
     rows.length ? rows.reduce((s, r) => s + r.scores[i], 0) / rows.length : 0);
+  const overall = rows.length ? avgs.reduce((a, b) => a + b, 0) / 6 : 0;
 
+  const sum = wb.addWorksheet("สรุปสำหรับ e-service");
+  sum.columns = [{ key: "c1", width: 40 }, { key: "c2", width: 15 }, { key: "c3", width: 15 }];
+
+  // แถวหัวสถิติการเข้าร่วม (merged, สีน้ำเงิน)
+  const titleRow = sum.addRow([`สถิติการเข้าร่วมประเมิน${unit ? ` — ${unit}` : ""}`, "", ""]);
+  sum.mergeCells(`A${titleRow.number}:C${titleRow.number}`);
+  titleRow.font = { ...FONT, bold: true, color: { argb: "FFFFFFFF" } };
+  titleRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
+  titleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  titleRow.height = 28;
+  titleRow.eachCell(c => (c.border = BORDER));
+
+  for (const [label, val, u] of [
+    ["ผู้เข้าร่วมประเมิน", participated, "คน"],
+    ["กำลังพลทั้งหมด", TOTAL_HEADCOUNT, "คน"],
+    ["คิดเป็นร้อยละ", pct ?? "—", pct !== null ? "%" : ""],
+  ]) {
+    const r = sum.addRow([label, val, u]);
+    r.font = FONT;
+    r.alignment = { vertical: "middle" };
+    r.getCell(2).alignment = r.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+    r.eachCell(c => (c.border = BORDER));
+  }
+
+  sum.addRow([]); // คั่นระหว่างสถิติกับตาราง EMM
+
+  // หัวตาราง EMM
+  styleHeader(sum.addRow(["หัวข้อ EMM", "คะแนนเฉลี่ย", "ระดับที่กรอก"]));
+
+  // แถวหัวข้อ EMM 1–6
   avgs.forEach((v, i) => {
-    const row = sum.addRow({ topic: `${i + 1}. ${TOPICS[i]}`, avg: +v.toFixed(2), lvl: Math.round(v) });
+    const row = sum.addRow([`${i + 1}. ${TOPICS[i]}`, +v.toFixed(2), Math.round(v)]);
     row.font = FONT;
     row.alignment = { vertical: "top", wrapText: true };
     row.eachCell(c => (c.border = BORDER));
-    row.getCell("avg").alignment = row.getCell("lvl").alignment = { horizontal: "center" };
-    row.getCell("lvl").font = { ...FONT, bold: true };
+    row.getCell(2).alignment = row.getCell(3).alignment = { horizontal: "center" };
+    row.getCell(3).font = { ...FONT, bold: true };
   });
 
-  const overall = rows.length ? avgs.reduce((a, b) => a + b, 0) / 6 : 0;
-  const last = sum.addRow({
-    topic: `ภาพรวม${unit ? ` (${unit})` : ""} — ${rows.length} คน`,
-    avg: +overall.toFixed(2), lvl: Math.round(overall),
-  });
+  // แถวภาพรวม
+  const last = sum.addRow([
+    `ภาพรวม${unit ? ` (${unit})` : ""} — ${rows.length} คน`,
+    +overall.toFixed(2), Math.round(overall),
+  ]);
   last.font = { ...FONT, bold: true };
   last.fill = { type: "pattern", pattern: "solid", fgColor: { argb: YELLOW } };
   last.eachCell(c => (c.border = BORDER));
-  last.getCell("avg").alignment = last.getCell("lvl").alignment = { horizontal: "center" };
+  last.getCell(2).alignment = last.getCell(3).alignment = { horizontal: "center" };
 
   const stamp = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
