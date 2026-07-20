@@ -141,9 +141,25 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 .steps{animation:fadeInUp .5s ease-out .5s both}
 #p1{animation:fadeInUp .6s ease-out .42s both}
 
+/* portal landing */
+.survey-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin:16px 0 20px}
+.scard{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:18px 18px 16px;
+  box-shadow:0 2px 8px rgba(27,76,158,.06);display:flex;flex-direction:column;gap:9px}
+.scard.open{border-color:var(--blue)}
+.scard.soon{opacity:.6}
+.scard-badges{display:flex;gap:6px;flex-wrap:wrap}
+.scard-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px}
+.badge-open{background:#e6f1fb;color:#185FA5}
+.badge-year{background:#fff8e0;color:#7a4800}
+.badge-soon{background:#f1f1f1;color:var(--muted)}
+.scard h3{font-size:15px;color:var(--blue);margin:0;line-height:1.4}
+.scard p{font-size:12px;color:var(--muted);margin:0;line-height:1.55;flex:1}
+.scard button{margin-top:2px}
+#p0{animation:fadeInUp .5s ease-out .25s both}
+
 /* admin full-page mode — ซ่อน survey ทั้งหมด แสดงเฉพาะ admin */
-.admin-mode .hero,.admin-mode .steps,.admin-mode #p1,.admin-mode #p2,
-.admin-mode #p3,.admin-mode .adminbar{display:none!important}
+.admin-mode .hero,.admin-mode .steps,.admin-mode #p0,.admin-mode #p1,.admin-mode #p2,
+.admin-mode #p3{display:none!important}
 .admin-mode #admin{display:block!important}
 
 @media(max-width:620px){
@@ -156,15 +172,35 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 
   <div class="hero">
     <img class="logo" src="LogoEGAT-only.png" alt="โลโก้ การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย">
-    <h1>แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น ประจำปี 2569</h1>
-    <p>การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย สำนักงานไทรน้อย · กรุณาตอบให้ครบทุกข้อ</p>
+    <h1>ระบบแบบประเมินออนไลน์</h1>
+    <p>การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย สำนักงานไทรน้อย</p>
     <img class="engy" src="ENGY%20PNG/engy%2026.png" alt="ENGY มาสคอต กฟผ.">
   </div>
 
-  <div class="steps"><div class="on" id="s1"></div><div id="s2"></div><div id="s3"></div></div>
+  <!-- หน้า 0: portal -->
+  <div id="p0">
+    <div class="survey-grid">
+      <div class="scard open">
+        <div class="scard-badges"><span class="scard-badge badge-open">เปิดรับ 2569</span><span class="scard-badge badge-year">พลังงาน</span></div>
+        <h3>แบบประเมินสถานภาพ<br>การจัดการพลังงาน</h3>
+        <p>ประเมินระดับการจัดการพลังงาน 6 ด้านตามหลักการ Energy Management Matrix ใช้เวลาประมาณ 3 นาที</p>
+        <button class="primary" id="startSurvey">เริ่มทำแบบประเมิน →</button>
+      </div>
+      <div class="scard soon">
+        <div class="scard-badges"><span class="scard-badge badge-soon">เร็วๆ นี้</span></div>
+        <h3>แบบประเมินอื่นๆ</h3>
+        <p>อยู่ระหว่างพัฒนา ติดตามการอัปเดต</p>
+        <button class="primary" disabled>ยังไม่เปิดให้บริการ</button>
+      </div>
+    </div>
+    <p class="adminbar"><a href="#" id="adminLink">ดูผลการประเมิน</a><br>
+    <span style="font-size:11px;color:var(--muted);opacity:.6">ผู้ดูแลระบบ : นายตวงเพชร ชัยยานนท์ วศ.4 หบอว-ธ. กบห-ธ. ชธธ.</span></p>
+  </div>
+
+  <div class="steps hidden"><div class="on" id="s1"></div><div id="s2"></div><div id="s3"></div></div>
 
   <!-- หน้า 1 -->
-  <form id="p1">
+  <form id="p1" class="hidden">
     <div class="card" style="display:flex;align-items:center;gap:16px">
       <img src="ENGY%20PNG/engy%205.png" alt="" style="width:96px;flex:none">
       <p class="muted" style="margin:0">สวัสดีครับ ผม <b style="color:var(--blue)">ENGY</b> จะพาคุณทำแบบประเมินนี้เอง<br>ใช้เวลาประมาณ 3 นาที เริ่มจากข้อมูลผู้ตอบก่อนเลยครับ</p>
@@ -198,12 +234,9 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       <h2>ส่งคำตอบเรียบร้อยแล้ว</h2>
       <p class="muted">ขอบคุณที่ร่วมตอบแบบประเมิน ช่วยให้เราจัดการพลังงานได้ดีขึ้นครับ</p>
       <div id="score"></div>
-      <div class="bar"><span></span><button class="primary" onclick="location.reload()">ตอบแบบประเมินอีกครั้ง</button></div>
+      <div class="bar"><span></span><button class="primary" onclick="go(0)">กลับหน้าหลัก</button></div>
     </div>
   </div>
-
-  <p class="adminbar"><a href="#" id="adminLink">ดูผลการประเมิน</a><br>
-  <span style="font-size:11px;color:var(--muted);opacity:.6">ผู้ดูแลระบบ : นายตวงเพชร ชัยยานนท์ วศ.4 หบอว-ธ. กบห-ธ. ชธธ.</span></p>
 
   <!-- admin -->
   <div id="admin" class="card hidden">
@@ -314,12 +347,15 @@ let rows = [], adminPw = "";
 
 // ponytail: สลับหน้า + อัปเดตแถบขั้นตอน รวมไว้ที่เดียว
 function go(n){
+  $("#p0").classList.toggle("hidden", n !== 0);
+  $(".steps").classList.toggle("hidden", n === 0);
   [1,2,3].forEach(i => {
     $("#p"+i).classList.toggle("hidden", i !== n);
     $("#s"+i).classList.toggle("on", i <= n);
   });
   scrollTo(0,0);
 }
+$("#startSurvey").onclick = () => go(1);
 
 // ---- หน้า 1: ตัวเลือกสังกัด
 $("#units").innerHTML = UNITS.map(u =>
@@ -442,6 +478,7 @@ $("#pw").onclose = async () => {
 $("#closeAdmin").onclick = () => {
   document.body.classList.remove("admin-mode");
   $("#admin").classList.add("hidden");
+  go(0);
 };
 $("#filter").onchange = render;
 $("#searchQ").oninput = render;
