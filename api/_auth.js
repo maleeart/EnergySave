@@ -10,7 +10,8 @@ const matches = (a, b) => {
 export function authed(req, res) {
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) { res.status(500).json({ error: "ยังไม่ได้ตั้งค่า ADMIN_PASSWORD" }); return false; }
-  if (!matches(req.headers["x-admin-password"] ?? "", expected)) {
+  const got = (() => { try { return decodeURIComponent(req.headers["x-admin-password"] ?? ""); } catch { return ""; } })();
+  if (!matches(got, expected)) {
     res.status(401).json({ error: "รหัสผ่านไม่ถูกต้อง" }); return false;
   }
   return true;

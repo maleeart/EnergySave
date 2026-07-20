@@ -404,8 +404,10 @@ async function errMsg(r){
   catch { return `HTTP ${r.status} — เซิร์ฟเวอร์ไม่ได้ตอบเป็น JSON`; }
 }
 
+const authHdr = pw => ({"x-admin-password": encodeURIComponent(pw)});
+
 const loadRows = async pw => {
-  const r = await fetch("/api/responses", {headers: {"x-admin-password": pw}});
+  const r = await fetch("/api/responses", {headers: authHdr(pw)});
   if (!r.ok) throw new Error(await errMsg(r));
   return r.json();
 };
@@ -550,7 +552,7 @@ $("#xlsx").onclick = async e => {
   btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์...";
   try {
     const q = $("#filter").value ? "?unit=" + encodeURIComponent($("#filter").value) : "";
-    const r = await fetch("/api/export" + q, {headers: {"x-admin-password": adminPw}});
+    const r = await fetch("/api/export" + q, {headers: authHdr(adminPw)});
     if (!r.ok) throw new Error(await errMsg(r));
     const a = Object.assign(document.createElement("a"), {
       href: URL.createObjectURL(await r.blob()),
@@ -572,7 +574,7 @@ async function delRow(i) {
   try {
     const res = await fetch("/api/delete", {
       method: "DELETE",
-      headers: { "content-type": "application/json", "x-admin-password": adminPw },
+      headers: { "content-type": "application/json", ...authHdr(adminPw) },
       body: JSON.stringify({ url: r._blobUrl }),
     });
     if (!res.ok) throw new Error(await errMsg(res));

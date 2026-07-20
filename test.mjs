@@ -45,8 +45,9 @@ import vm from "node:vm";
 const html = readFileSync("index.html", "utf8");
 const src = html.slice(html.lastIndexOf("<script>") + 8, html.lastIndexOf("</script>"));
 
-// DOM จำลองแบบบางที่สุด: รับทุก property ที่สคริปต์แตะตอนโหลด
-const el = new Proxy({}, {get: (t, k) => k in t ? t[k] : (t[k] = k === "value" ? "" : new Proxy({}, {get: () => () => {}})),
+// DOM จำลองแบบบางที่สุด: noop รับทุกการเรียก รวมถึง addEventListener / classList
+const noop = new Proxy(() => {}, { get: () => noop, apply: () => noop });
+const el = new Proxy({}, {get: (t, k) => k in t ? t[k] : (t[k] = k === "value" ? "" : noop),
                         set: (t, k, v) => (t[k] = v, true)});
 const ctx = vm.createContext({document: {querySelector: () => el}, localStorage: null, console});
 vm.runInContext(src, ctx);
