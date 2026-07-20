@@ -1,4 +1,4 @@
-import { redis, KEY } from "./_redis.js";
+import { append } from "./_blob.js";
 
 const str = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
 
@@ -13,11 +13,8 @@ export default async function handler(req, res) {
       !scores.every(s => Number.isInteger(s) && s >= 0 && s <= 4))
     return res.status(400).json({ error: "คำตอบไม่ครบหรือไม่ถูกต้อง" });
 
-  await redis().lpush(KEY, JSON.stringify({
-    name: name.trim(), empid: empid.trim(), unit: unit.trim(), scores,
-    at: new Date().toISOString(),
-  }));
+  await append({ name: name.trim(), empid: empid.trim(), unit: unit.trim(), scores,
+    at: new Date().toISOString() });
 
-  // ponytail: ไม่มี rate limit — ถ้าเจอ spam ค่อยใส่ @upstash/ratelimit ต่อ redis ตัวเดิม
   res.status(201).json({ ok: true });
 }

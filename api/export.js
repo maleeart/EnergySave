@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { redis, KEY } from "./_redis.js";
+import { readAll } from "./_blob.js";
 import { authed } from "./_auth.js";
 
 // หัวข้อ EMM — ต้องตรงกับ MATRIX ใน index.html (ชุดนี้เป็นมาตรฐาน พพ. ไม่เปลี่ยน)
@@ -22,8 +22,7 @@ const styleHeader = row => {
 export default async function handler(req, res) {
   if (!authed(req, res)) return;
 
-  const raw = await redis().lrange(KEY, 0, -1);
-  const all = raw.map(r => (typeof r === "string" ? JSON.parse(r) : r));
+  const all = await readAll();
   const unit = req.query?.unit || "";
   const rows = unit ? all.filter(r => r.unit === unit) : all;
 

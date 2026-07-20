@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@upstash/redis": "^1.35.0",
+    "@vercel/blob": "^2.6.1",
     "exceljs": "^4.4.0"
   }
 }
