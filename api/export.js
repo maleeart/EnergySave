@@ -24,7 +24,10 @@ export default async function handler(req, res) {
 
   const all = await readAll();
   const unit = req.query?.unit || "";
-  const rows = unit ? all.filter(r => r.unit === unit) : all;
+  const q = (req.query?.q || "").trim().toLowerCase();
+  const rows = all
+    .filter(r => !unit || r.unit === unit)
+    .filter(r => !q || r.name.toLowerCase().includes(q) || r.empid.toLowerCase().includes(q));
 
   const participated = new Set(rows.map(r => r.empid)).size;
   const pct = TOTAL_HEADCOUNT ? +(participated / TOTAL_HEADCOUNT * 100).toFixed(1) : null;

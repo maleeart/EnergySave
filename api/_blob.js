@@ -3,10 +3,18 @@ import { put, list } from "@vercel/blob";
 const PREFIX = "energysave/responses/";
 
 export async function append(data) {
-  // ponytail: __blobMock เป็น test seam — ใช้เฉพาะใน test.mjs
-  if (globalThis.__blobMock) { globalThis.__blobMock.push(data); return; }
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  await put(`${PREFIX}${id}.json`, JSON.stringify(data), { access: "public" });
+  if (globalThis.__blobMock) {
+    const idx = globalThis.__blobMock.findIndex(r => r.empid === data.empid);
+    if (idx >= 0) globalThis.__blobMock.splice(idx, 1);
+    globalThis.__blobMock.push(data);
+    return;
+  }
+  // ใช้ empid เป็น key → put() เขียนทับอัตโนมัติเมื่อรหัสเดิมส่งซ้ำ
+  const safe = String(data.empid).replace(/[^a-zA-Z0-9]/g, "_");
+  await put(`${PREFIX}emp-${safe}.json`, JSON.stringify(data), {
+    access: "public",
+    addRandomSuffix: false,
+  });
 }
 
 export async function readAll() {

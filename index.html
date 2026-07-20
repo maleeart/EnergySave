@@ -215,8 +215,12 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
       <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
     </div>
-    <label style="margin-top:18px">กรองตามสังกัด</label>
-    <select id="filter" style="width:auto;min-width:220px"></select>
+    <div class="bar" style="flex-wrap:wrap;margin-top:18px;gap:12px;align-items:flex-end">
+      <div><label>กรองตามสังกัด</label>
+      <select id="filter" style="display:block;width:auto;min-width:200px"></select></div>
+      <div><label>ค้นหาชื่อ / รหัสพนักงาน</label>
+      <input type="text" id="searchQ" placeholder="พิมพ์เพื่อค้นหา..." style="display:block;width:240px"></div>
+    </div>
 
     <h3 class="secTitle">ความครอบคลุมของการประเมิน</h3>
     <div class="tiles" id="tiles"></div>
@@ -440,6 +444,16 @@ $("#closeAdmin").onclick = () => {
   $("#admin").classList.add("hidden");
 };
 $("#filter").onchange = render;
+$("#searchQ").oninput = render;
+
+// คืน list ที่กรองปัจจุบัน (ใช้ร่วมกันระหว่าง CSV/xlsx กับตาราง)
+function currentList(){
+  const sel = $("#filter").value;
+  const sq = ($("#searchQ").value || "").trim().toLowerCase();
+  return rows
+    .filter(r => !sel || r.unit === sel)
+    .filter(r => !sq || r.name.toLowerCase().includes(sq) || r.empid.toLowerCase().includes(sq));
+}
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
 
@@ -515,7 +529,10 @@ function render(){
   $("#filter").value = units.includes(keep) ? keep : "";
 
   const sel = keep && units.includes(keep) ? keep : "";
-  const list = sel ? rows.filter(r => r.unit === sel) : rows;
+  const sq = ($("#searchQ").value || "").trim().toLowerCase();
+  const list = rows
+    .filter(r => !sel || r.unit === sel)
+    .filter(r => !sq || r.name.toLowerCase().includes(sq) || r.empid.toLowerCase().includes(sq));
 
   const c = coverage(list, sel);
   $("#tiles").innerHTML =
@@ -538,18 +555,20 @@ function render(){
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
     MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th></th></tr>` +
-    rows.map((r,i) => `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
-      r.scores.map(s=>`<td>${s}</td>`).join("") +
-      `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`).join("");
+    list.map(r => {
+      const i = rows.indexOf(r);
+      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
+        r.scores.map(s=>`<td>${s}</td>`).join("") +
+        `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`;
+    }).join("");
 }
 
 $("#csv").onclick = () => {
-  const q = v => `"${String(v).replace(/"/g,'""')}"`;
-  const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","สังกัด", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`), "เฉลี่ย"];
-  const body = rows.map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, ...r.scores,
-    (r.scores.reduce((a,b)=>a+b,0)/r.scores.length).toFixed(2)]);
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","สังกัด", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`)];
+  const body = currentList().map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, ...r.scores]);
   // ponytail: BOM นำหน้า เพื่อให้ Excel อ่านภาษาไทยถูก
-  const blob = new Blob(["﻿" + [head, ...body].map(r=>r.map(q).join(",")).join("\r\n")], {type:"text/csv"});
+  const blob = new Blob(["﻿" + [head, ...body].map(r=>r.map(esc).join(",")).join("\r\n")], {type:"text/csv"});
   const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(blob), download: "energy-survey.csv"});
   a.click(); URL.revokeObjectURL(a.href);
 };
@@ -558,8 +577,11 @@ $("#xlsx").onclick = async e => {
   const btn = e.target;
   btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์...";
   try {
-    const q = $("#filter").value ? "?unit=" + encodeURIComponent($("#filter").value) : "";
-    const r = await fetch("/api/export" + q, {headers: authHdr(adminPw)});
+    const p = new URLSearchParams();
+    if ($("#filter").value) p.set("unit", $("#filter").value);
+    const sq = ($("#searchQ").value || "").trim();
+    if (sq) p.set("q", sq);
+    const r = await fetch("/api/export" + (p.toString() ? "?" + p : ""), {headers: authHdr(adminPw)});
     if (!r.ok) throw new Error(await errMsg(r));
     const a = Object.assign(document.createElement("a"), {
       href: URL.createObjectURL(await r.blob()),
