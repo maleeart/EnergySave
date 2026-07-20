@@ -152,7 +152,7 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
     <div class="bar" style="justify-content:flex-start">
       <button class="primary" id="csv">ดาวน์โหลด CSV</button>
-      <button class="ghost" id="wipe">ล้างข้อมูลทั้งหมด</button>
+      <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
       <button class="ghost" id="closeAdmin">ปิด</button>
     </div>
     <div class="scroll"><table id="tbl"></table></div>
@@ -210,9 +210,8 @@ const MATRIX = [
   "ไม่มีการลงทุนด้านการอนุรักษ์พลังงาน"]]
 ];
 
-const KEY = "energysave.responses";
 const $ = s => document.querySelector(s);
-const load = () => JSON.parse(localStorage.getItem(KEY) || "[]");
+let rows = [], adminPw = "";
 
 // ponytail: สลับหน้า + อัปเดตแถบขั้นตอน รวมไว้ที่เดียว
 function go(n){
@@ -269,13 +268,28 @@ $("#p1").onsubmit = e => {
 
 $("#back").onclick = () => go(1);
 
-$("#p2").onsubmit = e => {
+$("#p2").onsubmit = async e => {
   e.preventDefault();
   if (!valid(e.target)) return;
   const f = new FormData(e.target);
   const scores = MATRIX.map((_, i) => +f.get("q" + i));
-  const rec = {...draft, scores, at: new Date().toISOString()};
-  localStorage.setItem(KEY, JSON.stringify([...load(), rec]));
+
+  const btn = e.target.querySelector(".primary");
+  btn.disabled = true; btn.textContent = "กำลังส่ง...";
+  try {
+    const r = await fetch("/api/submit", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({...draft, scores}),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "ส่งไม่สำเร็จ");
+  } catch (err) {
+    // ไม่ทิ้งคำตอบ: ให้ผู้ใช้กดส่งซ้ำได้
+    alert("ส่งคำตอบไม่สำเร็จ: " + err.message + "\nกรุณาลองใหม่อีกครั้ง");
+    btn.disabled = false; btn.textContent = "ส่งคำตอบ";
+    return;
+  }
+  btn.disabled = false; btn.textContent = "ส่งคำตอบ";
 
   const avg = scores.reduce((a,b)=>a+b,0) / scores.length;
   $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
@@ -284,13 +298,15 @@ $("#p2").onsubmit = e => {
   go(3);
 };
 
-// ---- admin
-// ponytail: รหัสผ่านฝั่ง client = กันคนทั่วไปเท่านั้น ไม่ใช่ security จริง
-// ถ้าต้องกันจริง ต้องมี backend ตรวจสอบ + เก็บคำตอบฝั่งเซิร์ฟเวอร์
+// ---- admin (รหัสผ่านตรวจสอบฝั่งเซิร์ฟเวอร์ด้วย env var ADMIN_PASSWORD)
 $("#adminLink").onclick = e => { e.preventDefault(); $("#pwIn").value = ""; $("#pw").showModal(); };
-$("#pw").onclose = () => {
+$("#pw").onclose = async () => {
   if ($("#pw").returnValue !== "ok") return;
-  if ($("#pwIn").value !== "M@lee8888") return alert("รหัสผ่านไม่ถูกต้อง");
+  const pw = $("#pwIn").value;
+  const r = await fetch("/api/responses", {headers: {"x-admin-password": pw}});
+  if (!r.ok) return alert((await r.json().catch(() => ({}))).error || "เข้าสู่ระบบไม่สำเร็จ");
+  adminPw = pw;
+  rows = await r.json();
   render();
   $("#admin").classList.remove("hidden");
   $("#admin").scrollIntoView();
@@ -298,7 +314,6 @@ $("#pw").onclose = () => {
 $("#closeAdmin").onclick = () => $("#admin").classList.add("hidden");
 
 function render(){
-  const rows = load();
   $("#cnt").textContent = rows.length;
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
@@ -311,7 +326,7 @@ function render(){
 $("#csv").onclick = () => {
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
   const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","สังกัด", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`), "เฉลี่ย"];
-  const body = load().map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, ...r.scores,
+  const body = rows.map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, ...r.scores,
     (r.scores.reduce((a,b)=>a+b,0)/r.scores.length).toFixed(2)]);
   // ponytail: BOM นำหน้า เพื่อให้ Excel อ่านภาษาไทยถูก
   const blob = new Blob(["﻿" + [head, ...body].map(r=>r.map(q).join(",")).join("\r\n")], {type:"text/csv"});
@@ -319,8 +334,13 @@ $("#csv").onclick = () => {
   a.click(); URL.revokeObjectURL(a.href);
 };
 
-$("#wipe").onclick = () => {
-  if (confirm("ลบคำตอบทั้งหมด? ควรดาวน์โหลด CSV เก็บไว้ก่อน")) { localStorage.removeItem(KEY); render(); }
+// ponytail: ไม่มีปุ่มลบข้อมูล — ข้อมูลรวมของทุกคน ลบพลาดแล้วกู้ไม่ได้
+// ถ้าต้องลบจริง ใช้ Upstash console หรือค่อยทำ endpoint แยกที่ยืนยันสองชั้น
+$("#refresh").onclick = async () => {
+  const r = await fetch("/api/responses", {headers: {"x-admin-password": adminPw}});
+  if (!r.ok) return alert("โหลดข้อมูลไม่สำเร็จ");
+  rows = await r.json();
+  render();
 };
 </script>
 </body>
