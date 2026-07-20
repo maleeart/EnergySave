@@ -1,7 +1,5 @@
-import { Redis } from "@upstash/redis";
 import { timingSafeEqual } from "node:crypto";
-
-const KEY = "energysave:responses";
+import { redis, KEY } from "./_redis.js";
 
 const matches = (a, b) => {
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
@@ -16,6 +14,6 @@ export default async function handler(req, res) {
 
   // lrange ดึงทั้งหมดในครั้งเดียว; @upstash/redis แปลง JSON ให้อัตโนมัติ
   // ponytail: โหลดทั้งก้อน พอสำหรับหลักพันรายการ — เกินกว่านั้นค่อยทำ paging
-  const rows = await Redis.fromEnv().lrange(KEY, 0, -1);
+  const rows = await redis().lrange(KEY, 0, -1);
   res.status(200).json(rows.map(r => (typeof r === "string" ? JSON.parse(r) : r)));
 }
