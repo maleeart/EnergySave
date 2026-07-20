@@ -522,10 +522,8 @@ function render(){
   const avgs = avgOf(list);
   $("#chart").innerHTML = emmChart(avgs, list.length);
 
-  const overall = list.length ? avgs.reduce((a,b)=>a+b,0) / 6 : 0;
   $("#sum").innerHTML = `<tr><th>หัวข้อ</th><th>ค่าเฉลี่ย</th><th>ระดับที่กรอก</th></tr>` +
-    MATRIX.map(([t], i) => `<tr><td>${i+1}. ${t}</td><td>${avgs[i].toFixed(2)}</td><td><b>${Math.round(avgs[i])}</b></td></tr>`).join("") +
-    `<tr><th>ภาพรวม (${list.length} คน)</th><th>${overall.toFixed(2)}</th><th>${Math.round(overall)}</th></tr>`;
+    MATRIX.map(([t], i) => `<tr><td>${i+1}. ${t}</td><td>${avgs[i].toFixed(2)}</td><td><b>${Math.round(avgs[i])}</b></td></tr>`).join("");
 
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
