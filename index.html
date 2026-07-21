@@ -593,7 +593,7 @@ function currentList(){
   const sq = ($("#searchQ").value || "").trim().toLowerCase();
   return rows
     .filter(r => !sel || r.unit === sel)
-    .filter(r => !sq || r.name.toLowerCase().includes(sq) || r.empid.toLowerCase().includes(sq));
+    .filter(r => !sq || r.name.toLowerCase().includes(sq) || (r.empid ?? "").toLowerCase().includes(sq));
 }
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
@@ -673,7 +673,7 @@ function render(){
   const sq = ($("#searchQ").value || "").trim().toLowerCase();
   const list = rows
     .filter(r => !sel || r.unit === sel)
-    .filter(r => !sq || r.name.toLowerCase().includes(sq) || r.empid.toLowerCase().includes(sq));
+    .filter(r => !sq || r.name.toLowerCase().includes(sq) || (r.empid ?? "").toLowerCase().includes(sq));
 
   const c = coverage(list, sel);
   $("#tiles").innerHTML =
@@ -690,15 +690,15 @@ function render(){
   const avgs = avgOf(list);
   $("#chart").innerHTML = emmChart(avgs, list.length);
 
-  $("#sum").innerHTML = `<tr><th>หัวข้อ</th><th>ค่าเฉลี่ย</th><th>ระดับที่กรอก</th></tr>` +
-    MATRIX.map(([t], i) => `<tr><td>${i+1}. ${t}</td><td>${avgs[i].toFixed(2)}</td><td><b>${Math.round(avgs[i])}</b></td></tr>`).join("");
+  $("#sum").innerHTML = `<tr><th>หัวข้อ</th><th>ค่าเฉลี่ย</th></tr>` +
+    MATRIX.map(([t], i) => `<tr><td>${i+1}. ${t}</td><td>${avgs[i].toFixed(2)}</td></tr>`).join("");
 
   $("#tbl").innerHTML =
     `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
     MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th></th></tr>` +
     list.map(r => {
       const i = rows.indexOf(r);
-      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid}</td><td>${r.unit}</td>` +
+      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td>` +
         r.scores.map(s=>`<td>${s}</td>`).join("") +
         `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`;
     }).join("");
