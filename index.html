@@ -214,13 +214,19 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       <p class="muted" style="margin:0">สวัสดีครับ ผม <b style="color:var(--blue)">ENGY</b> จะพาคุณทำแบบประเมินนี้เอง<br>ใช้เวลาประมาณ 3 นาที เริ่มจากข้อมูลผู้ตอบก่อนเลยครับ</p>
     </div>
     <div class="card">
+      <label>ประเภทบุคลากร <span class="req">*</span></label>
+      <label class="opt"><input type="radio" name="emptype" value="พนักงาน" required><span>พนักงาน</span></label>
+      <label class="opt"><input type="radio" name="emptype" value="ลูกจ้าง"><span>ลูกจ้าง</span></label>
+      <div class="err">กรุณาเลือกประเภท</div>
+    </div>
+    <div class="card">
       <label>ชื่อ - สกุล <span class="req">*</span></label>
       <input type="text" name="name" required>
       <div class="err">กรุณากรอกข้อมูล</div>
     </div>
-    <div class="card">
+    <div class="card" id="empidCard">
       <label>รหัสพนักงาน <span class="req">*</span></label>
-      <input type="text" name="empid" required>
+      <input type="text" name="empid" id="empidInput" required>
       <div class="err">กรุณากรอกข้อมูล</div>
     </div>
     <div class="card">
@@ -231,6 +237,28 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     </div>
     <div class="bar"><button class="ghost" type="button" onclick="go(0)">← หน้าหลัก</button><button class="primary" type="submit">ถัดไป</button></div>
   </form>
+
+  <!-- modal ยืนยันแก้ไขข้อมูลซ้ำ -->
+  <div id="confirmModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="card" style="max-width:480px;width:100%;margin:0">
+      <h3 style="margin:0 0 8px;color:var(--blue)">พบข้อมูลเดิมในระบบ</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.9em">ต้องการแก้ไขคำตอบหรือไม่? ข้อมูลเดิมจะถูกแทนที่</p>
+      <div style="overflow-x:auto">
+        <table id="diffTable" style="width:100%;border-collapse:collapse;font-size:.85em">
+          <thead><tr style="background:var(--blue);color:#fff">
+            <th style="padding:6px 8px;text-align:left">ข้อมูล</th>
+            <th style="padding:6px 8px;text-align:left">เดิม</th>
+            <th style="padding:6px 8px;text-align:left">ใหม่</th>
+          </tr></thead>
+          <tbody id="diffBody"></tbody>
+        </table>
+      </div>
+      <div class="bar" style="margin-top:16px">
+        <button class="ghost" type="button" onclick="closeConfirm()">ยกเลิก</button>
+        <button class="primary" type="button" id="confirmBtn">ยืนยันแก้ไข</button>
+      </div>
+    </div>
+  </div>
 
   <!-- หน้า 2 -->
   <form id="p2" class="hidden"></form>
@@ -398,6 +426,16 @@ function valid(form){
   return ok;
 }
 
+// toggle empid field ตาม emptype
+document.querySelectorAll("input[name=emptype]").forEach(r => r.addEventListener("change", () => {
+  const isEmp = r.value === "พนักงาน" && r.checked;
+  $("#empidCard").classList.toggle("hidden", !isEmp);
+  $("#empidInput").required = isEmp;
+  if (!isEmp) $("#empidInput").value = "";
+}));
+
+const normName = s => s.trim().replace(/^(นาย|นางสาว|นาง)\s*/, "").trim();
+
 let draft = {};
 $("#p1").onsubmit = e => {
   e.preventDefault();
@@ -406,21 +444,17 @@ $("#p1").onsubmit = e => {
   const unit = f.get("unit");
   draft = {
     name: f.get("name").trim(),
-    empid: f.get("empid").trim(),
-    unit: unit === "อื่นๆ" ? `อื่นๆ: ${$("#unitOther").value.trim()}` : unit
+    empid: f.get("empid")?.trim() || null,
+    unit: unit === "อื่นๆ" ? `อื่นๆ: ${$("#unitOther").value.trim()}` : unit,
+    type: f.get("emptype"),
   };
   go(2);
 };
 
 $("#back").onclick = () => go(1);
 
-$("#p2").onsubmit = async e => {
-  e.preventDefault();
-  if (!valid(e.target)) return;
-  const f = new FormData(e.target);
-  const scores = MATRIX.map((_, i) => +f.get("q" + i));
-
-  const btn = e.target.querySelector(".primary");
+async function doSubmit(scores) {
+  const btn = $("#p2").querySelector(".primary");
   btn.disabled = true; btn.textContent = "กำลังส่ง...";
   try {
     const r = await fetch("/api/submit", {
@@ -430,17 +464,78 @@ $("#p2").onsubmit = async e => {
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "ส่งไม่สำเร็จ");
   } catch (err) {
-    // ไม่ทิ้งคำตอบ: ให้ผู้ใช้กดส่งซ้ำได้
     alert("ส่งคำตอบไม่สำเร็จ: " + err.message + "\nกรุณาลองใหม่อีกครั้ง");
     btn.disabled = false; btn.textContent = "ส่งคำตอบ";
-    return;
+    return false;
   }
   btn.disabled = false; btn.textContent = "ส่งคำตอบ";
+  return true;
+}
 
-  $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
-    MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${scores[i]}</td></tr>`).join("") +
-    `</table>`;
-  go(3);
+let pendingScores = null;
+function closeConfirm() {
+  $("#confirmModal").classList.add("hidden");
+  pendingScores = null;
+  const btn = $("#p2").querySelector(".primary");
+  btn.disabled = false; btn.textContent = "ส่งคำตอบ";
+}
+
+$("#confirmBtn").onclick = async () => {
+  $("#confirmModal").classList.add("hidden");
+  if (await doSubmit(pendingScores)) {
+    $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
+      MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${pendingScores[i]}</td></tr>`).join("") + `</table>`;
+    pendingScores = null;
+    go(3);
+  }
+};
+
+$("#p2").onsubmit = async e => {
+  e.preventDefault();
+  if (!valid(e.target)) return;
+  const f = new FormData(e.target);
+  const scores = MATRIX.map((_, i) => +f.get("q" + i));
+
+  // เช็คข้อมูลซ้ำก่อนส่ง
+  const btn = e.target.querySelector(".primary");
+  btn.disabled = true; btn.textContent = "กำลังตรวจสอบ...";
+  let existing = null;
+  try {
+    const cr = await fetch("/api/check", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({name: draft.name, empid: draft.empid, unit: draft.unit, type: draft.type}),
+    });
+    if (cr.ok) existing = await cr.json();
+  } catch { /* network error — ปล่อยผ่าน ส่งตรงได้เลย */ }
+
+  if (existing) {
+    // แสดง diff modal
+    pendingScores = scores;
+    const rows = [
+      ["ชื่อ - สกุล", existing.name ?? "-", draft.name],
+      ...(draft.empid || existing.empid ? [["รหัสพนักงาน", existing.empid ?? "-", draft.empid ?? "-"]] : []),
+      ["สังกัด", existing.unit ?? "-", draft.unit],
+      ...MATRIX.map(([t], i) => [t, existing.scores?.[i] ?? "-", scores[i]]),
+    ];
+    $("#diffBody").innerHTML = rows.map(([label, old, nw]) => {
+      const diff = String(old) !== String(nw);
+      return `<tr style="${diff ? "background:#fff8e1" : ""}">
+        <td style="padding:5px 8px;border-bottom:1px solid #eee">${label}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;color:${diff?"#c62828":"inherit"}">${old}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;color:${diff?"#2e7d32":"inherit"}">${nw}</td>
+      </tr>`;
+    }).join("");
+    $("#confirmModal").classList.remove("hidden");
+    return; // รอ user ยืนยัน
+  }
+
+  btn.disabled = false; btn.textContent = "ส่งคำตอบ";
+  if (await doSubmit(scores)) {
+    $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
+      MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${scores[i]}</td></tr>`).join("") + `</table>`;
+    go(3);
+  }
 };
 
 // ---- admin (รหัสผ่านตรวจสอบฝั่งเซิร์ฟเวอร์ด้วย env var ADMIN_PASSWORD)

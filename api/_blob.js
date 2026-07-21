@@ -9,9 +9,13 @@ export async function append(data) {
     globalThis.__blobMock.push(data);
     return;
   }
-  // ใช้ empid เป็น key → put() เขียนทับอัตโนมัติเมื่อรหัสเดิมส่งซ้ำ
-  const safe = String(data.empid).replace(/[^a-zA-Z0-9]/g, "_");
-  await put(`${PREFIX}emp-${safe}.json`, JSON.stringify(data), {
+  // พนักงาน: key = empid, ลูกจ้าง: key = ชื่อ+ฝ่าย
+  const normName = s => s.trim().replace(/^(นาย|นางสาว|นาง)\s*/, "").trim();
+  const safeStr = s => s.replace(/\s+/g, "_").replace(/[^\w฀-๿]/g, "").slice(0, 40);
+  const key = data.empid
+    ? `emp-${String(data.empid).replace(/[^a-zA-Z0-9]/g, "_")}`
+    : `contractor-${safeStr(normName(data.name))}-${safeStr(data.unit)}`;
+  await put(`${PREFIX}${key}.json`, JSON.stringify(data), {
     access: "public",
     addRandomSuffix: false,
     allowOverwrite: true,
