@@ -14,6 +14,7 @@ export async function append(data) {
   await put(`${PREFIX}emp-${safe}.json`, JSON.stringify(data), {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
   });
 }
 
