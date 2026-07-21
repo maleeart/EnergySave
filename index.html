@@ -598,10 +598,10 @@ function currentList(){
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
 
-// ความครอบคลุม — นับ "คน" ด้วยรหัสพนักงานไม่ซ้ำ เผื่อมีคนตอบซ้ำหลายครั้ง
+// ความครอบคลุม — นับ "คน" ด้วย empid (พนักงาน) หรือ ชื่อ+ฝ่าย (ลูกจ้าง)
 function coverage(list, unit){
   const scope = unit ? [unit] : Object.keys(HEADCOUNT);
-  const people = new Set(list.map(r => r.empid)).size;
+  const people = new Set(list.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
   // ถ้าไม่กรอง: ใช้ TOTAL_HEADCOUNT รวม / ถ้ากรองต่อฝ่าย: ใช้ HEADCOUNT[unit]
   const total  = unit ? (HEADCOUNT[unit] ?? 0) : TOTAL_HEADCOUNT;
   return {
@@ -684,8 +684,8 @@ function render(){
     tile("คิดเป็นร้อยละของบุคลากร",
          c.pct === null ? "—" : `${c.pct.toFixed(1)}<small> %</small>`,
          c.pct === null ? "ต้องกรอกกำลังพลก่อนจึงคำนวณได้" : "") +
-    tile("จำนวนคำตอบทั้งหมด", `${list.length}<small> รายการ</small>`,
-         list.length > c.people ? `มีผู้ตอบซ้ำ ${list.length - c.people} รายการ` : "");
+    tile("พนักงาน / ลูกจ้าง",
+         `${list.filter(r=>r.empid).length}<small> คน</small> / ${list.filter(r=>!r.empid).length}<small> คน</small>`);
 
   const avgs = avgOf(list);
   $("#chart").innerHTML = emmChart(avgs, list.length);
