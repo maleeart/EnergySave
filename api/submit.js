@@ -13,8 +13,13 @@ export default async function handler(req, res) {
       !scores.every(s => Number.isInteger(s) && s >= 0 && s <= 4))
     return res.status(400).json({ error: "คำตอบไม่ครบหรือไม่ถูกต้อง" });
 
-  await append({ name: name.trim(), empid: empid.trim(), unit: unit.trim(), scores,
-    at: new Date().toISOString() });
+  try {
+    await append({ name: name.trim(), empid: empid.trim(), unit: unit.trim(), scores,
+      at: new Date().toISOString() });
+  } catch (err) {
+    console.error("[submit] blob error:", err);
+    return res.status(500).json({ error: err.message || "blob write failed" });
+  }
 
   res.status(201).json({ ok: true });
 }
