@@ -128,6 +128,9 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 .del-btn{padding:3px 9px;font-size:12px;font-weight:600;background:transparent;color:var(--red);
   border:1px solid var(--red);border-radius:6px;cursor:pointer;transition:.15s}
 .del-btn:hover{background:var(--red);color:#fff}
+.edit-btn{padding:3px 9px;font-size:12px;font-weight:600;background:transparent;color:var(--blue);
+  border:1px solid var(--blue);border-radius:6px;cursor:pointer;transition:.15s;margin-right:4px}
+.edit-btn:hover{background:var(--blue);color:#fff}
 
 /* ====== Animations ====== */
 @keyframes fadeInUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
@@ -311,6 +314,41 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <label>รหัสผ่านผู้ดูแลระบบ</label>
     <input type="password" id="pwIn" autocomplete="off">
     <div class="bar"><button class="ghost" value="x">ยกเลิก</button><button class="primary" value="ok">เข้าสู่ระบบ</button></div>
+  </form>
+</dialog>
+
+<dialog id="editDialog" style="width:100%;max-width:400px;border-top:6px solid var(--blue)">
+  <form id="editForm" style="display:flex;flex-direction:column;gap:14px;margin:0">
+    <h3 style="margin:0 0 6px;color:var(--blue)">แก้ไขข้อมูลการประเมิน</h3>
+    
+    <div>
+      <label style="margin-bottom:6px">ประเภทบุคลากร <span class="req">*</span></label>
+      <select id="editType" style="width:100%;padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;outline:none;background:#fbfcfe">
+        <option value="พนักงาน">พนักงาน</option>
+        <option value="ลูกจ้าง">ลูกจ้าง</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="margin-bottom:6px">ชื่อ - สกุล <span class="req">*</span></label>
+      <input type="text" id="editName" required style="padding:9px 12px">
+    </div>
+
+    <div id="editEmpidGroup">
+      <label style="margin-bottom:6px">รหัสพนักงาน <span class="req">*</span></label>
+      <input type="text" id="editEmpid" required style="padding:9px 12px">
+    </div>
+
+    <div>
+      <label style="margin-bottom:6px">สังกัด <span class="req">*</span></label>
+      <select id="editUnit" style="width:100%;padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;outline:none;background:#fbfcfe;margin-bottom:8px"></select>
+      <input type="text" id="editUnitOther" placeholder="ระบุสังกัดอื่นๆ" class="hidden" style="padding:9px 12px">
+    </div>
+
+    <div class="bar" style="margin-top:10px">
+      <button class="ghost" type="button" onclick="document.getElementById('editDialog').close()">ยกเลิก</button>
+      <button class="primary" type="submit">บันทึก</button>
+    </div>
   </form>
 </dialog>
 
@@ -700,7 +738,10 @@ function render(){
       const i = rows.indexOf(r);
       return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td>` +
         r.scores.map(s=>`<td>${s}</td>`).join("") +
-        `<td><button class="del-btn" onclick="delRow(${i})">ลบ</button></td></tr>`;
+        `<td>` +
+        `<button class="edit-btn" onclick="editRow(${i})">แก้ไข</button>` +
+        `<button class="del-btn" onclick="delRow(${i})">ลบ</button>` +
+        `</td></tr>`;
     }).join("");
 }
 
@@ -740,7 +781,7 @@ $("#refresh").onclick = async () => {
 
 async function delRow(i) {
   const r = rows[i];
-  if (!confirm(`ลบข้อมูลของ "${r.name}" (${r.empid}) ออกจากระบบถาวร?\nการลบไม่สามารถกู้คืนได้`)) return;
+  if (!confirm(`ลบข้อมูลของ "${r.name}" (${r.empid ?? "(ลูกจ้าง)"}) ออกจากระบบถาวร?\nการลบไม่สามารถกู้คืนได้`)) return;
   try {
     const res = await fetch("/api/delete", {
       method: "DELETE",
@@ -752,6 +793,103 @@ async function delRow(i) {
     render();
   } catch (err) { alert("ลบไม่สำเร็จ: " + err.message); }
 }
+
+let editIndex = -1;
+
+$("#editType").onchange = () => {
+  const isEmp = $("#editType").value === "พนักงาน";
+  $("#editEmpidGroup").classList.toggle("hidden", !isEmp);
+  $("#editEmpid").required = isEmp;
+  if (!isEmp) $("#editEmpid").value = "";
+};
+
+$("#editUnit").onchange = () => {
+  const isOther = $("#editUnit").value === "อื่นๆ";
+  $("#editUnitOther").classList.toggle("hidden", !isOther);
+  $("#editUnitOther").required = isOther;
+  if (!isOther) $("#editUnitOther").value = "";
+};
+
+function editRow(i) {
+  editIndex = i;
+  const r = rows[i];
+  
+  // Populate edit unit options
+  $("#editUnit").innerHTML = UNITS.map(u => `<option value="${u}">${u}</option>`).join("");
+  
+  const type = r.type ?? (r.empid ? "พนักงาน" : "ลูกจ้าง");
+  $("#editType").value = type;
+  
+  const isEmp = type === "พนักงาน";
+  $("#editEmpidGroup").classList.toggle("hidden", !isEmp);
+  $("#editEmpid").required = isEmp;
+  $("#editEmpid").value = r.empid ?? "";
+  
+  $("#editName").value = r.name;
+  
+  const standard = UNITS.slice(0, -1);
+  if (standard.includes(r.unit)) {
+    $("#editUnit").value = r.unit;
+    $("#editUnitOther").value = "";
+    $("#editUnitOther").classList.add("hidden");
+    $("#editUnitOther").required = false;
+  } else {
+    $("#editUnit").value = "อื่นๆ";
+    $("#editUnitOther").value = r.unit.startsWith("อื่นๆ: ") ? r.unit.slice(7) : r.unit;
+    $("#editUnitOther").classList.remove("hidden");
+    $("#editUnitOther").required = true;
+  }
+  
+  $("#editDialog").showModal();
+}
+
+$("#editForm").onsubmit = async e => {
+  e.preventDefault();
+  const r = rows[editIndex];
+  const name = $("#editName").value.trim();
+  const type = $("#editType").value;
+  const empid = type === "พนักงาน" ? $("#editEmpid").value.trim() : null;
+  const unitVal = $("#editUnit").value;
+  const unit = unitVal === "อื่นๆ" ? `อื่นๆ: ${$("#editUnitOther").value.trim()}` : unitVal;
+  
+  const saveBtn = e.target.querySelector("button[type=submit]");
+  saveBtn.disabled = true; saveBtn.textContent = "กำลังบันทึก...";
+  
+  try {
+    const res = await fetch("/api/update", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHdr(adminPw) },
+      body: JSON.stringify({
+        url: r._blobUrl,
+        name,
+        empid,
+        unit,
+        type,
+        scores: r.scores,
+        at: r.at
+      })
+    });
+    if (!res.ok) throw new Error(await errMsg(res));
+    const data = await res.json();
+    
+    // Update local row cache
+    rows[editIndex] = {
+      ...r,
+      name,
+      empid,
+      unit,
+      type,
+      _blobUrl: data.url || r._blobUrl
+    };
+    
+    $("#editDialog").close();
+    render();
+  } catch (err) {
+    alert("บันทึกไม่สำเร็จ: " + err.message);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = "บันทึก";
+  }
+};
 </script>
 </body>
 </html>

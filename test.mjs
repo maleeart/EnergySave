@@ -49,7 +49,7 @@ const src = html.slice(html.lastIndexOf("<script>") + 8, html.lastIndexOf("</scr
 const noop = new Proxy(() => {}, { get: () => noop, apply: () => noop });
 const el = new Proxy({}, {get: (t, k) => k in t ? t[k] : (t[k] = k === "value" ? "" : noop),
                         set: (t, k, v) => (t[k] = v, true)});
-const ctx = vm.createContext({document: {querySelector: () => el}, localStorage: null, console});
+const ctx = vm.createContext({document: {querySelector: () => el, querySelectorAll: () => [el]}, localStorage: null, console});
 vm.runInContext(src, ctx);
 const { emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT } =
   vm.runInContext("({emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT})", ctx);
@@ -143,7 +143,37 @@ assert.equal(s2.getRow(13).getCell(3).value, 3, "ภาพรวมต้อง�
 
 assert.equal(xres.h["content-type"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "MIME ต้องเป็น xlsx จริง");
+// --- update: ต้องแอนมินเท่านั้น และข้อมูลต้องถูกต้อง ---
+const updateHandler = (await import("./api/update.js")).default;
+const mockPerson = {
+  url: "mock-url-123",
+  name: "สมชาย ทดสอบ",
+  empid: "88888",
+  unit: "อบค.",
+  type: "พนักงาน",
+  scores: [1, 2, 3, 4, 0, 1],
+  at: new Date().toISOString()
+};
+
+assert.equal((await call(updateHandler, { body: mockPerson })).code, 401, "update: ไม่ส่งรหัสผ่านต้องได้ 401");
+assert.equal((await call(updateHandler, {
+  headers: { "x-admin-password": "M@lee8888" },
+  body: { ...mockPerson, name: "" }
+})).code, 400, "update: ชื่อว่างต้องได้ 400");
+
+globalThis.__blobMock = [
+  { name: "สมชาย ทดสอบ", empid: "88888", unit: "อบค.", type: "พนักงาน", scores: [1, 2, 3, 4, 0, 1], at: mockPerson.at, _blobUrl: "mock-url-123" }
+];
+const updateRes = await call(updateHandler, {
+  headers: { "x-admin-password": "M@lee8888" },
+  body: {
+    ...mockPerson,
+    name: "สมชาย แก้ไขแล้ว"
+  }
+});
+assert.equal(updateRes.code, 200, "update: ข้อมูลถูกต้องต้องได้ 200");
+assert.equal(globalThis.__blobMock[0].name, "สมชาย แก้ไขแล้ว", "ข้อมูลใน mock ต้องอัปเดตแล้ว");
 
 delete globalThis.__blobMock;
 
-console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม และ export Excel");
+console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel และ update");

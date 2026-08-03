@@ -6,7 +6,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
 
   // trust boundary: endpoint นี้เปิดสาธารณะ ต้องตรวจรูปร่างข้อมูลทุกฟิลด์
-  const { name, empid, unit, type, scores } = req.body ?? {};
+  const { name, empid, unit, scores } = req.body ?? {};
+  const type = req.body?.type ?? "พนักงาน";
   if (!str(name, 100) || !str(unit, 120))
     return res.status(400).json({ error: "ข้อมูลผู้ตอบไม่ถูกต้อง" });
   // พนักงานต้องมี empid, ลูกจ้างไม่ต้องมี
