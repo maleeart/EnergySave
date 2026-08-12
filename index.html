@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,6 +15,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="EMM กฟผ.">
 <meta name="theme-color" content="#1B4C9E">
+<!-- Lucide Icons for premium feel -->
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
 /* ธีม กฟผ. — สีจากโลโก้ EGAT */
 :root{
@@ -20,7 +25,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;color:var(--ink);line-height:1.65;
-  font-family:"Sarabun","Noto Sans Thai","Segoe UI",Tahoma,sans-serif;
+  font-family:"Outfit","Noto Sans Thai","Sarabun",sans-serif;
   background:var(--bg);
   background-image:radial-gradient(circle at 12% 8%,rgba(253,197,0,.16),transparent 42%),
                    radial-gradient(circle at 88% 4%,rgba(27,76,158,.14),transparent 40%);
@@ -132,6 +137,77 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
   border:1px solid var(--blue);border-radius:6px;cursor:pointer;transition:.15s;margin-right:4px}
 .edit-btn:hover{background:var(--blue);color:#fff}
 
+/* Header & Navigation */
+.app-header {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(27, 76, 158, 0.04);
+}
+.header-container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0.8rem 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.icon-logo {
+  color: var(--blue);
+  width: 1.6rem;
+  height: 1.6rem;
+  filter: drop-shadow(0 0 6px rgba(27, 76, 158, 0.15));
+}
+.logo-text {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--blue);
+}
+.logo-accent {
+  background: linear-gradient(135deg, var(--yellow-d) 0%, var(--yellow) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+.nav-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+.nav-btn {
+  background: transparent;
+  border: 1.5px solid transparent;
+  color: var(--muted);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all .15s;
+}
+.nav-btn:hover {
+  color: var(--blue);
+  background-color: #f4f8ff;
+}
+.nav-btn.active {
+  color: var(--blue);
+  background-color: #e6f1fb;
+  border-color: rgba(27, 76, 158, 0.2);
+}
+
 /* ====== Animations ====== */
 @keyframes fadeInUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @keyframes fadeInLeft{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
@@ -180,6 +256,25 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 </style>
 </head>
 <body>
+<header class="app-header">
+  <div class="header-container">
+    <div class="logo" onclick="goHome()">
+      <i data-lucide="zap" class="icon-logo"></i>
+      <span class="logo-text">EGAT <span class="logo-accent">EnergySave</span></span>
+    </div>
+    <nav class="nav-actions">
+      <button id="nav-home-btn" class="nav-btn hidden" onclick="goHome()">
+        <i data-lucide="home"></i> หน้าแรก
+      </button>
+      <button id="admin-entry-btn" class="nav-btn" onclick="openAdmin()">
+        <i data-lucide="shield-alert"></i> โหมดแอดมิน
+      </button>
+      <button id="nav-logout-btn" class="nav-btn hidden" onclick="logoutAdmin()">
+        <i data-lucide="log-out"></i> ออกจากระบบ
+      </button>
+    </nav>
+  </div>
+</header>
 <div class="wrap">
 
   <div class="hero">
@@ -420,6 +515,41 @@ const MATRIX = [
 const $ = s => document.querySelector(s);
 let rows = [], adminPw = "";
 
+// Initialize Lucide icons
+if (typeof lucide !== "undefined") {
+  lucide.createIcons();
+}
+
+function updateHeaderNav() {
+  const isAdminMode = document.body.classList.contains("admin-mode");
+  const isPage0 = !$("#p0").classList.contains("hidden");
+  
+  $("#nav-home-btn").classList.toggle("hidden", isPage0 && !isAdminMode);
+  $("#admin-entry-btn").classList.toggle("hidden", isAdminMode);
+  $("#nav-logout-btn").classList.toggle("hidden", !isAdminMode);
+  
+  $("#nav-home-btn").classList.toggle("active", isPage0 && !isAdminMode);
+  $("#admin-entry-btn").classList.toggle("active", isAdminMode);
+}
+
+function goHome() {
+  document.body.classList.remove("admin-mode");
+  $("#admin").classList.add("hidden");
+  go(0);
+}
+
+function openAdmin() {
+  $("#pwIn").value = "";
+  $("#pw").showModal();
+}
+
+function logoutAdmin() {
+  adminPw = "";
+  document.body.classList.remove("admin-mode");
+  $("#admin").classList.add("hidden");
+  go(0);
+}
+
 // ponytail: สลับหน้า + อัปเดตแถบขั้นตอน รวมไว้ที่เดียว
 function go(n){
   $("#p0").classList.toggle("hidden", n !== 0);
@@ -429,6 +559,7 @@ function go(n){
     $("#s"+i).classList.toggle("on", i <= n);
   });
   scrollTo(0,0);
+  updateHeaderNav();
 }
 $("#startSurvey").onclick = () => go(1);
 
@@ -609,10 +740,12 @@ $("#pw").onclose = async () => {
   try {
     rows = await loadRows(adminPw);
     render();
+    updateHeaderNav();
   } catch (err) {
     document.body.classList.remove("admin-mode");
     adminPw = "";
     alert("เข้าสู่ระบบไม่สำเร็จ: " + err.message);
+    updateHeaderNav();
   } finally {
     $("#adminLoading").hidden = true;
   }
@@ -621,6 +754,7 @@ $("#closeAdmin").onclick = () => {
   document.body.classList.remove("admin-mode");
   $("#admin").classList.add("hidden");
   go(0);
+  updateHeaderNav();
 };
 $("#filter").onchange = render;
 $("#searchQ").oninput = render;
