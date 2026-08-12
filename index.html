@@ -536,13 +536,12 @@ if (typeof lucide !== "undefined") {
 
 function updateHeaderNav() {
   const isAdminMode = document.body.classList.contains("admin-mode");
-  const isPage0 = !$("#p0").classList.contains("hidden");
   
-  $("#nav-home-btn").classList.toggle("hidden", isPage0 && !isAdminMode);
+  $("#nav-home-btn").classList.toggle("hidden", !isAdminMode);
   $("#admin-entry-btn").classList.toggle("hidden", isAdminMode);
   $("#nav-logout-btn").classList.toggle("hidden", !isAdminMode);
   
-  $("#nav-home-btn").classList.toggle("active", isPage0 && !isAdminMode);
+  $("#nav-home-btn").classList.toggle("active", false);
   $("#admin-entry-btn").classList.toggle("active", isAdminMode);
 }
 
