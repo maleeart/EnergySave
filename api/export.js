@@ -1,10 +1,10 @@
 import ExcelJS from "exceljs";
-import { readAll } from "./_blob.js";
+import { readAll, readHeadcount } from "./_blob.js";
 import { authed } from "./_auth.js";
 
 const TOPICS = ["นโยบายการจัดการพลังงาน", "การจัดองค์กร", "การกระตุ้นและสร้างแรงจูงใจ",
                 "ระบบข้อมูลข่าวสาร", "การประชาสัมพันธ์", "การลงทุน"];
-const TOTAL_HEADCOUNT = 1700; // กำลังพล กฟผ. ไทรน้อย ทั้งหมด
+const TOTAL_HEADCOUNT = 1700; // กำลังพล กฟผ. ไทรน้อย ทั้งหมด (default)
 
 const FONT = { name: "TH SarabunPSK", size: 14 };
 const BLUE = "FF1B4C9E", YELLOW = "FFFDC500", ZEBRA = "FFF4F8FF";
@@ -23,6 +23,10 @@ export default async function handler(req, res) {
   if (!authed(req, res)) return;
 
   const all = await readAll();
+  const hcData = await readHeadcount();
+  const HEADCOUNT = hcData?.headcount ?? {};
+  const effectiveTotal = hcData?.total ?? TOTAL_HEADCOUNT;
+
   const unit = req.query?.unit || "";
   const q = (req.query?.q || "").trim().toLowerCase();
   const rows = all
@@ -30,7 +34,8 @@ export default async function handler(req, res) {
     .filter(r => !q || r.name.toLowerCase().includes(q) || r.empid.toLowerCase().includes(q));
 
   const participated = new Set(rows.map(r => r.empid)).size;
-  const pct = TOTAL_HEADCOUNT ? +(participated / TOTAL_HEADCOUNT * 100).toFixed(1) : null;
+  const currentHeadcount = unit ? (HEADCOUNT[unit] ?? 0) : effectiveTotal;
+  const pct = currentHeadcount ? +(participated / currentHeadcount * 100).toFixed(1) : null;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "แบบประเมินสถานภาพการจัดการพลังงาน กฟผ.";
@@ -85,7 +90,7 @@ export default async function handler(req, res) {
 
   for (const [label, val, u] of [
     ["ผู้เข้าร่วมประเมิน", participated, "คน"],
-    ["กำลังพลทั้งหมด", TOTAL_HEADCOUNT, "คน"],
+    ["กำลังพลทั้งหมด", currentHeadcount, "คน"],
     ["คิดเป็นร้อยละ", pct ?? "—", pct !== null ? "%" : ""],
   ]) {
     const r = sum.addRow([label, val, u]);

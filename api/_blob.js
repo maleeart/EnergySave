@@ -51,3 +51,32 @@ export async function remove(url) {
   const { del } = await import("@vercel/blob");
   await del(url);
 }
+
+const CONFIG_HEADCOUNT_KEY = "energysave/config/headcount.json";
+
+export async function saveHeadcount(data) {
+  if (globalThis.__blobMock !== undefined || !process.env.BLOB_READ_WRITE_TOKEN) {
+    globalThis.__headcountMock = data;
+    return;
+  }
+  await put(CONFIG_HEADCOUNT_KEY, JSON.stringify(data), {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+}
+
+export async function readHeadcount() {
+  if (globalThis.__blobMock !== undefined || !process.env.BLOB_READ_WRITE_TOKEN) {
+    return globalThis.__headcountMock ?? null;
+  }
+  try {
+    const { blobs } = await list({ prefix: "energysave/config/" });
+    const b = blobs.find(x => x.pathname === CONFIG_HEADCOUNT_KEY || x.pathname.endsWith("headcount.json"));
+    if (!b) return null;
+    return await fetch(b.url).then(r => r.json()).catch(() => null);
+  } catch (err) {
+    console.warn("[readHeadcount] blob read error, fallback to mock/null:", err.message);
+    return globalThis.__headcountMock ?? null;
+  }
+}

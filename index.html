@@ -105,6 +105,8 @@ button{font:inherit;font-weight:700;border:none;border-radius:9px;padding:11px 2
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
 #tbl th,#tbl td{font-size:11px;padding:4px 8px;white-space:nowrap;vertical-align:middle}
+#deptSummaryTbl th,#deptSummaryTbl td{font-size:12px;padding:7px 8px;white-space:nowrap;text-align:center;vertical-align:middle}
+#deptSummaryTbl th:first-child,#deptSummaryTbl td:first-child{text-align:left}
 th{background:var(--blue);color:#fff;font-weight:600}
 tbody tr:nth-child(even),table tr:nth-child(even){background:#f7fafd}
 .scroll{overflow-x:auto;border-radius:10px}
@@ -394,6 +396,7 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <div class="bar" style="justify-content:flex-start;flex-wrap:wrap">
       <button class="primary" id="xlsx">export Excel</button>
       <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
+      <button class="ghost" id="headcountBtn">👥 ตั้งค่ากำลังพล</button>
       <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
       <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
     </div>
@@ -406,6 +409,9 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 
     <h3 class="secTitle">ความครอบคลุมของการประเมิน</h3>
     <div class="tiles" id="tiles"></div>
+
+    <h3 class="secTitle">สรุปผลการประเมินแยกตามสังกัด / ฝ่าย</h3>
+    <div class="scroll"><table id="deptSummaryTbl"></table></div>
 
     <h3 class="secTitle">กราฟสรุป Energy Management Matrix</h3>
     <div id="chart" class="scroll"></div>
@@ -461,6 +467,25 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
   </form>
 </dialog>
 
+<dialog id="headcountDialog" style="width:100%;max-width:440px;border-top:6px solid var(--blue)">
+  <form id="headcountForm" style="display:flex;flex-direction:column;gap:12px;margin:0">
+    <h3 style="margin:0;color:var(--blue)">ระบุจำนวนบุคลากรแต่ละฝ่าย</h3>
+    <p class="muted" style="margin:0;font-size:13px">กำหนดจำนวนบุคลากรเป้าหมายเพื่อใช้คำนวณร้อยละความครอบคลุมของการประเมิน</p>
+    
+    <div id="headcountInputs" style="display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto;padding-right:4px;margin-top:4px"></div>
+    
+    <div style="background:var(--bg);padding:10px 14px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;font-weight:700">
+      <span>รวมกำลังพลทั้งหมด:</span>
+      <span style="color:var(--blue);font-size:18px"><span id="headcountTotalSum">0</span> คน</span>
+    </div>
+
+    <div class="bar" style="margin-top:8px">
+      <button class="ghost" type="button" onclick="document.getElementById('headcountDialog').close()">ยกเลิก</button>
+      <button class="primary" type="submit">บันทึกข้อมูล</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อรอ.","อคม.","อหข.","อื่นๆ"];
 
@@ -470,7 +495,7 @@ const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อ�
 const HEADCOUNT = {
   "สก.ชธธ.": 0, "อบค.": 0, "อบฟ.": 0, "อบย.": 0, "อรอ.": 0, "อคม.": 0, "อหข.": 0,
 };
-const TOTAL_HEADCOUNT = 1700; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย — ใส่ต่อฝ่ายใน HEADCOUNT เมื่อมีข้อมูล
+let TOTAL_HEADCOUNT = 1700; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย — ปรับปรุงอัตโนมัติตามการระบุของแอดมิน
 
 // รูป/เอกสารประกอบแต่ละข้อ — ระบุชื่อไฟล์ตรง ๆ เพราะชื่อไฟล์ไม่ได้เรียงเป็นแบบแผน
 // จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
@@ -751,6 +776,7 @@ $("#pw").onclose = async () => {
   window.scrollTo({ top: 0, behavior: "instant" });
   $("#adminLoading").hidden = false;
   try {
+    await loadHeadcount();
     rows = await loadRows(adminPw);
     render();
     updateHeaderNav();
@@ -871,6 +897,67 @@ function render(){
          c.pct === null ? "ต้องกรอกกำลังพลก่อนจึงคำนวณได้" : "") +
     tile("พนักงาน / ลูกจ้าง",
          `${list.filter(r=>r.empid).length}<small> คน</small> / ${list.filter(r=>!r.empid).length}<small> คน</small>`);
+
+  // ตารางสรุปผลการประเมินแยกตามสังกัด / ฝ่าย
+  const deptList = Object.keys(HEADCOUNT);
+  const otherRows = rows.filter(r => !deptList.includes(r.unit));
+  const allDeptsToRender = [...deptList];
+  if (otherRows.length > 0) allDeptsToRender.push("อื่นๆ");
+
+  const deptRowsHtml = allDeptsToRender.map(dept => {
+    const isOther = dept === "อื่นๆ";
+    const dRows = isOther ? otherRows : rows.filter(r => r.unit === dept);
+    const dPeople = new Set(dRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+    const targetHc = isOther ? 0 : (HEADCOUNT[dept] ?? 0);
+    const dPct = targetHc > 0 ? (dPeople / targetHc * 100) : null;
+    const dAvgs = avgOf(dRows);
+    const dOverall = dRows.length ? dAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
+    const isFiltered = sel === dept;
+
+    return `<tr style="${isFiltered ? 'background:#fff8e0;' : ''}">
+      <td><strong>${dept}</strong></td>
+      <td>${dPeople} คน</td>
+      <td>${targetHc ? targetHc + ' คน' : '<span class="muted">—</span>'}</td>
+      <td>${dPct !== null ? `<span style="color:${dPct >= 100 ? '#10b981' : 'var(--blue)'};font-weight:700">${dPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</td>
+      ${dAvgs.map(v => `<td>${dRows.length ? v.toFixed(2) : '—'}</td>`).join('')}
+      <td><strong>${dRows.length ? dOverall.toFixed(2) : '—'}</strong></td>
+      <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${isOther ? "" : dept}')">${isFiltered ? 'กำลังกรอง' : 'เลือกดู'}</button></td>
+    </tr>`;
+  }).join('');
+
+  const overallHc = TOTAL_HEADCOUNT;
+  const overallPeople = new Set(rows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+  const overallPct = overallHc > 0 ? (overallPeople / overallHc * 100) : null;
+  const allDeptsAvgs = avgOf(rows);
+  const allDeptsOverall = rows.length ? allDeptsAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
+
+  const totalRowHtml = `<tr style="background:#eaf1fa;font-weight:700">
+    <td>รวมทั้งหมด (กฟผ. ไทรน้อย)</td>
+    <td>${overallPeople} คน</td>
+    <td>${overallHc} คน</td>
+    <td>${overallPct !== null ? `${overallPct.toFixed(1)}%` : '—'}</td>
+    ${allDeptsAvgs.map(v => `<td>${rows.length ? v.toFixed(2) : '—'}</td>`).join('')}
+    <td>${rows.length ? allDeptsOverall.toFixed(2) : '—'}</td>
+    <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('')">ทั้งหมด</button></td>
+  </tr>`;
+
+  $("#deptSummaryTbl").innerHTML = `
+    <thead>
+      <tr>
+        <th>สังกัด / ฝ่าย</th>
+        <th>ประเมินแล้ว</th>
+        <th>กำลังพล</th>
+        <th>ร้อยละ</th>
+        ${SHORT.map(s => `<th>${s}</th>`).join('')}
+        <th>รวมเฉลี่ย</th>
+        <th>การทำงาน</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${deptRowsHtml}
+      ${totalRowHtml}
+    </tbody>
+  `;
 
   const avgs = avgOf(list);
   $("#chart").innerHTML = emmChart(avgs, list.length);
@@ -1037,6 +1124,101 @@ $("#editForm").onsubmit = async e => {
     saveBtn.disabled = false; saveBtn.textContent = "บันทึก";
   }
 };
+
+function filterByDept(unit) {
+  $("#filter").value = unit;
+  render();
+  $("#chart").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+const loadHeadcount = async () => {
+  try {
+    const r = await fetch("/api/headcount");
+    if (!r.ok) throw new Error(await errMsg(r));
+    const data = await r.json();
+    if (data && data.headcount) {
+      Object.assign(HEADCOUNT, data.headcount);
+      if (data.total) TOTAL_HEADCOUNT = data.total;
+    }
+  } catch (err) {
+    try {
+      const cached = (typeof localStorage !== "undefined" && localStorage) ? localStorage.getItem("energysave_headcount") : null;
+      if (cached) {
+        const d = JSON.parse(cached);
+        if (d.headcount) Object.assign(HEADCOUNT, d.headcount);
+        if (d.total) TOTAL_HEADCOUNT = d.total;
+      }
+    } catch {}
+  }
+};
+
+function recalcHeadcountSum() {
+  const inputs = document.querySelectorAll(".hc-input");
+  let sum = 0;
+  inputs.forEach(inp => {
+    sum += Math.max(0, parseInt(inp.value, 10) || 0);
+  });
+  $("#headcountTotalSum").textContent = sum;
+  return sum;
+}
+
+$("#headcountBtn").onclick = () => {
+  const depts = Object.keys(HEADCOUNT);
+  $("#headcountInputs").innerHTML = depts.map(dept => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <label style="margin:0;font-size:14px;min-width:90px">${dept}</label>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" min="0" step="1" name="hc_${dept}" class="hc-input" data-dept="${dept}" value="${HEADCOUNT[dept] ?? 0}" style="width:110px;padding:6px 10px;text-align:right" required>
+        <span style="font-size:13px;color:var(--muted)">คน</span>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll(".hc-input").forEach(inp => {
+    inp.addEventListener("input", recalcHeadcountSum);
+  });
+
+  recalcHeadcountSum();
+  $("#headcountDialog").showModal();
+};
+
+$("#headcountForm").onsubmit = async e => {
+  e.preventDefault();
+  const inputs = document.querySelectorAll(".hc-input");
+  const newHeadcount = {};
+  inputs.forEach(inp => {
+    const dept = inp.dataset.dept;
+    newHeadcount[dept] = Math.max(0, parseInt(inp.value, 10) || 0);
+  });
+  const total = recalcHeadcountSum();
+
+  const saveBtn = e.target.querySelector("button[type=submit]");
+  saveBtn.disabled = true; saveBtn.textContent = "กำลังบันทึก...";
+
+  try {
+    const res = await fetch("/api/headcount", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHdr(adminPw) },
+      body: JSON.stringify({ headcount: newHeadcount, total }),
+    });
+    if (!res.ok) throw new Error(await errMsg(res));
+    const data = await res.json();
+
+    Object.assign(HEADCOUNT, data.headcount);
+    TOTAL_HEADCOUNT = data.total;
+    try { localStorage.setItem("energysave_headcount", JSON.stringify(data)); } catch {}
+
+    $("#headcountDialog").close();
+    render();
+    alert("บันทึกจำนวนบุคลากรเรียบร้อยแล้ว");
+  } catch (err) {
+    alert("บันทึกไม่สำเร็จ: " + err.message);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = "บันทึกข้อมูล";
+  }
+};
+
+loadHeadcount();
 </script>
 </body>
 </html>

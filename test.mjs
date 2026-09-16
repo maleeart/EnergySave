@@ -176,4 +176,51 @@ assert.equal(globalThis.__blobMock[0].name, "สมชาย แก้ไขแ�
 
 delete globalThis.__blobMock;
 
-console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel และ update");
+// --- headcount: ตรวจสอบการจัดการกำลังพล ---
+const headcountHandler = (await import("./api/headcount.js")).default;
+
+// 1. GET ต้องอ่านได้แม้ไม่ต้องส่งรหัสผ่าน
+const getInitRes = await call(headcountHandler, { method: "GET" });
+assert.equal(getInitRes.code, 200, "headcount: GET ต้องได้ 200");
+assert.ok(getInitRes.body.headcount, "headcount: ต้องมี object headcount");
+
+// 2. POST ต้องกันคนไม่มีรหัสผ่าน
+assert.equal((await call(headcountHandler, {
+  method: "POST",
+  body: { headcount: { "อบค.": 100 } }
+})).code, 401, "headcount: POST ไม่มีรหัสผ่านต้องได้ 401");
+
+// 3. POST ข้อมูลผิด (เช่น ตัวเลขติดลบ) ต้องปฏิเสธ 400
+assert.equal((await call(headcountHandler, {
+  method: "POST",
+  headers: { "x-admin-password": "M@lee8888" },
+  body: { headcount: { "อบค.": -5 } }
+})).code, 400, "headcount: ติดลบต้องได้ 400");
+
+assert.equal((await call(headcountHandler, {
+  method: "POST",
+  headers: { "x-admin-password": "M@lee8888" },
+  body: { headcount: "not-an-object" }
+})).code, 400, "headcount: ไม่ใช่ object ต้องได้ 400");
+
+// 4. POST ข้อมูลถูกต้อง ต้องได้ 200 และคำนวณยอดรวมได้
+globalThis.__blobMock = [];
+const postValidRes = await call(headcountHandler, {
+  method: "POST",
+  headers: { "x-admin-password": "M@lee8888" },
+  body: {
+    headcount: { "สก.ชธธ.": 50, "อบค.": 100, "อบฟ.": 150 }
+  }
+});
+assert.equal(postValidRes.code, 200, "headcount: บันทึกถูกต้องต้องได้ 200");
+assert.equal(postValidRes.body.total, 300, "headcount: ผลรวมกำลังพลต้องได้ 300");
+
+// 5. GET อีกรอบต้องได้ข้อมูลที่เพิ่งบันทึกไป
+const getUpdatedRes = await call(headcountHandler, { method: "GET" });
+assert.equal(getUpdatedRes.body.headcount["อบค."], 100, "headcount: GET ต้องได้ค่าที่เพิ่งอัปเดต");
+assert.equal(getUpdatedRes.body.total, 300, "headcount: total ต้องเป็น 300");
+
+delete globalThis.__blobMock;
+delete globalThis.__headcountMock;
+
+console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel, update และ headcount");
