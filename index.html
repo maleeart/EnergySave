@@ -71,6 +71,11 @@ input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);backg
 .opt:hover{background:#f4f8ff;border-color:#cfdcf2}
 .opt input{margin-top:6px;flex:none;accent-color:var(--blue);width:17px;height:17px}
 .opt:has(input:checked){background:#fff8e0;border-color:var(--yellow);font-weight:600}
+.opt-row{display:flex;gap:12px}
+.opt-row .opt{flex:1}
+#units .opt{border:1.5px solid var(--line);background:#fbfcfe;margin-bottom:6px}
+#units .opt:hover{border-color:var(--blue);background:#f4f8ff}
+#units .opt:has(input:checked){background:#fff8e0;border-color:var(--yellow);font-weight:600}
 
 .err{color:var(--red);font-size:13px;margin-top:8px;display:none;font-weight:600}
 .err.on{display:block}
@@ -115,7 +120,7 @@ tbody tr:nth-child(even),table tr:nth-child(even){background:#f7fafd}
 .secTitle{font-size:16px;color:var(--blue);margin:26px 0 10px;padding-bottom:7px;border-bottom:2px solid var(--yellow)}
 select{padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;background:#fbfcfe}
 select:focus{border-color:var(--blue);outline:none}
-#chart svg{display:block;min-width:660px}
+#chart svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto}
 /* การ์ดตัวเลขสรุป — ตัวเลขคือคำตอบ ไม่ต้องทำเป็นกราฟ */
 .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
 .tile{background:#f7fafd;border:1.5px solid var(--line);border-left:5px solid var(--yellow);
@@ -269,6 +274,124 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 @media(max-width:620px){
   .hero .engy{animation:engyInM .65s cubic-bezier(.22,1,.36,1) .1s both}
 }
+
+/* ====== Responsive PC / Desktop Web Layout ====== */
+@media (min-width: 768px) {
+  .p1-desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+  .p1-desktop-grid .card {
+    margin-bottom: 0;
+  }
+  #units {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  #units .opt {
+    margin-bottom: 0;
+  }
+}
+
+@media (min-width: 992px) {
+  .wrap {
+    max-width: 1200px;
+    padding: 40px 24px 80px;
+  }
+  .header-container {
+    max-width: 1200px;
+    padding: 0.9rem 24px;
+  }
+  body.admin-mode .wrap,
+  body.admin-mode .header-container {
+    max-width: 1360px;
+  }
+  .hero {
+    padding: 34px 260px 34px 36px;
+  }
+  .hero h1 {
+    font-size: 32px;
+  }
+  .hero p {
+    font-size: 15px;
+  }
+  .hero .engy {
+    width: 210px;
+    right: 24px;
+    bottom: -8px;
+  }
+  .survey-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .scard {
+    padding: 24px;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .scard.open:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(27,76,158,.12);
+  }
+  .q-layout.has-media {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .q-media {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .q-media .qlink {
+    margin: 0 0 10px;
+  }
+  .q-media .qimg {
+    max-height: 260px;
+    width: 100%;
+    object-fit: contain;
+    background: #fff;
+  }
+  .tiles {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .tile .v {
+    font-size: 34px;
+  }
+  .admin-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 16px 0 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-btn-group, .admin-filter-group {
+    margin-top: 0 !important;
+  }
+  .admin-charts-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  #deptSummaryTbl th, #deptSummaryTbl td {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  #tbl th, #tbl td {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
 </style>
 </head>
 <body>
@@ -328,21 +451,25 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       <img src="ENGY%20PNG/engy%205.png" alt="" style="width:96px;flex:none">
       <p class="muted" style="margin:0">สวัสดีครับ ผม <b style="color:var(--blue)">ENGY</b> จะพาคุณทำแบบประเมินนี้เอง<br>ใช้เวลาประมาณ 3 นาที เริ่มจากข้อมูลผู้ตอบก่อนเลยครับ</p>
     </div>
-    <div class="card">
-      <label>ประเภทบุคลากร <span class="req">*</span></label>
-      <label class="opt"><input type="radio" name="emptype" value="พนักงาน" required><span>พนักงาน</span></label>
-      <label class="opt"><input type="radio" name="emptype" value="ลูกจ้าง"><span>ลูกจ้าง</span></label>
-      <div class="err">กรุณาเลือกประเภท</div>
-    </div>
-    <div class="card">
-      <label>ชื่อ - สกุล <span class="req">*</span></label>
-      <input type="text" name="name" required>
-      <div class="err">กรุณากรอกข้อมูล</div>
-    </div>
-    <div class="card" id="empidCard">
-      <label>รหัสพนักงาน <span class="req">*</span></label>
-      <input type="text" name="empid" id="empidInput" required>
-      <div class="err">กรุณากรอกข้อมูล</div>
+    <div class="p1-desktop-grid">
+      <div class="card">
+        <label>ประเภทบุคลากร <span class="req">*</span></label>
+        <div class="opt-row">
+          <label class="opt"><input type="radio" name="emptype" value="พนักงาน" required><span>พนักงาน</span></label>
+          <label class="opt"><input type="radio" name="emptype" value="ลูกจ้าง"><span>ลูกจ้าง</span></label>
+        </div>
+        <div class="err">กรุณาเลือกประเภท</div>
+      </div>
+      <div class="card">
+        <label>ชื่อ - สกุล <span class="req">*</span></label>
+        <input type="text" name="name" placeholder="ระบุชื่อ - นามสกุล" required>
+        <div class="err">กรุณากรอกข้อมูล</div>
+      </div>
+      <div class="card" id="empidCard">
+        <label>รหัสพนักงาน <span class="req">*</span></label>
+        <input type="text" name="empid" id="empidInput" placeholder="ระบุรหัสพนักงาน" required>
+        <div class="err">กรุณากรอกข้อมูล</div>
+      </div>
     </div>
     <div class="card">
       <label>สังกัด <span class="req">*</span> <span style="font-weight:normal;color:var(--muted);font-size:0.85em;margin-left:6px">(กรณีฝากสาย ให้เลือกสังกัดที่ปฏิบัติงานให้แทน)</span></label>
@@ -393,18 +520,20 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
   <div id="admin" class="card hidden">
     <p id="adminLoading" hidden style="text-align:center;padding:24px 0;color:var(--muted)">⏳ กำลังโหลดข้อมูล กรุณารอสักครู่...</p>
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
-    <div class="bar" style="justify-content:flex-start;flex-wrap:wrap">
-      <button class="primary" id="xlsx">export Excel</button>
-      <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
-      <button class="ghost" id="headcountBtn">👥 ตั้งค่ากำลังพล</button>
-      <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
-      <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
-    </div>
-    <div class="bar" style="flex-wrap:wrap;margin-top:18px;gap:12px;align-items:flex-end">
-      <div><label>กรองตามสังกัด</label>
-      <select id="filter" style="display:block;width:auto;min-width:200px"></select></div>
-      <div><label>ค้นหาชื่อ / รหัสพนักงาน</label>
-      <input type="text" id="searchQ" placeholder="พิมพ์เพื่อค้นหา..." style="display:block;width:240px"></div>
+    <div class="admin-toolbar">
+      <div class="bar admin-btn-group" style="justify-content:flex-start;flex-wrap:wrap">
+        <button class="primary" id="xlsx">export Excel</button>
+        <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
+        <button class="ghost" id="headcountBtn">👥 ตั้งค่ากำลังพล</button>
+        <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
+        <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
+      </div>
+      <div class="bar admin-filter-group" style="flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div><label>กรองตามสังกัด</label>
+        <select id="filter" style="display:block;width:auto;min-width:200px"></select></div>
+        <div><label>ค้นหาชื่อ / รหัสพนักงาน</label>
+        <input type="text" id="searchQ" placeholder="พิมพ์เพื่อค้นหา..." style="display:block;width:240px"></div>
+      </div>
     </div>
 
     <h3 class="secTitle">ความครอบคลุมของการประเมิน</h3>
@@ -413,11 +542,16 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <h3 class="secTitle">สรุปผลการประเมินแยกตามสังกัด / ฝ่าย</h3>
     <div class="scroll"><table id="deptSummaryTbl"></table></div>
 
-    <h3 class="secTitle">กราฟสรุป Energy Management Matrix</h3>
-    <div id="chart" class="scroll"></div>
-
-    <h3 class="secTitle">ค่าที่ใช้กรอกใน e-service (พพ.)</h3>
-    <div class="scroll"><table id="sum"></table></div>
+    <div class="admin-charts-grid">
+      <div>
+        <h3 class="secTitle">กราฟสรุป Energy Management Matrix</h3>
+        <div id="chart" class="scroll card" style="padding:16px;box-shadow:none;margin-bottom:0"></div>
+      </div>
+      <div>
+        <h3 class="secTitle">ค่าที่ใช้กรอกใน e-service (พพ.)</h3>
+        <div class="scroll card" style="padding:0;box-shadow:none;overflow:hidden;margin-bottom:0"><table id="sum"></table></div>
+      </div>
+    </div>
 
     <h3 class="secTitle">คำตอบรายบุคคล</h3>
     <div class="scroll"><table id="tbl"></table></div>
@@ -611,16 +745,31 @@ $("#units").onchange = e => {
 };
 
 // ---- หน้า 2: สร้างจาก MATRIX
-$("#p2").innerHTML = MATRIX.map(([title, levels], i) => `
-  <div class="card">
-    <label>${i+1}. ${title} <span class="req">*</span></label>
-    ${(QIMG[i+1] ?? []).map(f => `<a class="qlink" href="images/${f}" target="_blank" rel="noopener">
-        <img class="qimg" src="images/${f}" alt="เอกสารประกอบข้อ ${i+1} ${title}" loading="lazy" decoding="async">
-        <span>คลิกที่ภาพเพื่อดูขนาดเต็ม</span></a>`).join("")}
-    ${QLINK[i+1] ? `<a class="qbtn" href="${QLINK[i+1].url}" target="_blank" rel="noopener">🔗 ${QLINK[i+1].label}</a>` : ""}
-    ${levels.map((txt, j) => `<label class="opt"><input type="radio" name="q${i}" value="${4-j}" required><span>ระดับ ${4-j} — ${txt}</span></label>`).join("")}
-    <div class="err">กรุณาเลือกคำตอบ</div>
-  </div>`).join("") + `
+$("#p2").innerHTML = MATRIX.map(([title, levels], i) => {
+  const images = QIMG[i+1] ?? [];
+  const link = QLINK[i+1];
+  const hasMedia = images.length > 0 || !!link;
+
+  const mediaHtml = hasMedia ? `
+    <div class="q-media">
+      ${images.map(f => `<a class="qlink" href="images/${f}" target="_blank" rel="noopener">
+          <img class="qimg" src="images/${f}" alt="เอกสารประกอบข้อ ${i+1} ${title}" loading="lazy" decoding="async">
+          <span>คลิกที่ภาพเพื่อดูขนาดเต็ม</span></a>`).join("")}
+      ${link ? `<a class="qbtn" href="${link.url}" target="_blank" rel="noopener">🔗 ${link.label}</a>` : ""}
+    </div>` : "";
+
+  return `
+    <div class="card q-card">
+      <label>${i+1}. ${title} <span class="req">*</span></label>
+      <div class="q-layout ${hasMedia ? 'has-media' : ''}">
+        ${mediaHtml}
+        <div class="q-options">
+          ${levels.map((txt, j) => `<label class="opt"><input type="radio" name="q${i}" value="${4-j}" required><span>ระดับ ${4-j} — ${txt}</span></label>`).join("")}
+          <div class="err">กรุณาเลือกคำตอบ</div>
+        </div>
+      </div>
+    </div>`;
+}).join("") + `
   <div class="bar"><div style="display:flex;gap:8px"><button class="ghost" type="button" onclick="go(0)">← หน้าหลัก</button><button class="ghost" type="button" id="back">ย้อนกลับ</button></div><button class="primary" type="submit">ส่งคำตอบ</button></div>`;
 
 // ponytail: validate ด้วย HTML constraint API + ข้อความ error ต่อการ์ด แทน validation library
