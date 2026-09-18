@@ -56,10 +56,11 @@ export default async function handler(req, res) {
   styleHeader(ws.getRow(1));
 
   rows.forEach((r, i) => {
+    const unitLabel = r.subUnit ? `${r.unit} / ${r.subUnit}` : r.unit;
     const row = ws.addRow({
       no: i + 1,
       at: new Date(r.at).toLocaleString("th-TH"),
-      name: r.name, empid: r.empid, unit: r.unit,
+      name: r.name, empid: r.empid, unit: unitLabel,
       ...Object.fromEntries(r.scores.map((s, j) => ["q" + j, s])),
     });
     row.font = FONT;

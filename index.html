@@ -73,9 +73,9 @@ input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);backg
 .opt:has(input:checked){background:#fff8e0;border-color:var(--yellow);font-weight:600}
 .opt-row{display:flex;gap:12px}
 .opt-row .opt{flex:1}
-#units .opt{border:1.5px solid var(--line);background:#fbfcfe;margin-bottom:6px}
-#units .opt:hover{border-color:var(--blue);background:#f4f8ff}
-#units .opt:has(input:checked){background:#fff8e0;border-color:var(--yellow);font-weight:600}
+#units .opt,#subUnits .opt{border:1.5px solid var(--line);background:#fbfcfe;margin-bottom:6px}
+#units .opt:hover,#subUnits .opt:hover{border-color:var(--blue);background:#f4f8ff}
+#units .opt:has(input:checked),#subUnits .opt:has(input:checked){background:#fff8e0;border-color:var(--yellow);font-weight:600}
 
 .err{color:var(--red);font-size:13px;margin-top:8px;display:none;font-weight:600}
 .err.on{display:block}
@@ -292,10 +292,21 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
   }
-  #units .opt {
+  #subUnits {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  #units .opt, #subUnits .opt {
     margin-bottom: 0;
   }
 }
+
+.dept-row { background: #f0f5fc !important; font-weight: 700; }
+.dept-row td { border-top: 1.5px solid #cbd5e1; }
+.sub-row { background: #ffffff; }
+.sub-row:hover { background: #f8fafc; }
+.toggle-dept-btn { background: none; border: none; cursor: pointer; color: var(--blue); padding: 0 4px; font-size: 13px; font-weight: bold; }
 
 @media (min-width: 992px) {
   .wrap {
@@ -472,10 +483,17 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
       </div>
     </div>
     <div class="card">
-      <label>สังกัด <span class="req">*</span> <span style="font-weight:normal;color:var(--muted);font-size:0.85em;margin-left:6px">(กรณีฝากสาย ให้เลือกสังกัดที่ปฏิบัติงานให้แทน)</span></label>
+      <label>สังกัด (ฝ่าย) <span class="req">*</span> <span style="font-weight:normal;color:var(--muted);font-size:0.85em;margin-left:6px">(กรณีฝากสาย ให้เลือกสังกัดที่ปฏิบัติงานให้แทน)</span></label>
       <div id="units"></div>
-      <input type="text" id="unitOther" class="hidden" placeholder="โปรดระบุ" style="margin-top:8px">
-      <div class="err">กรุณาเลือกสังกัด</div>
+      <input type="text" id="unitOther" class="hidden" placeholder="โปรดระบุชื่อสังกัดฝ่าย" style="margin-top:8px">
+      <div class="err">กรุณาเลือกสังกัดฝ่าย</div>
+    </div>
+    
+    <div class="card hidden" id="subUnitsCard">
+      <label>สังกัด (กอง) <span class="req">*</span> <span id="subUnitDeptLabel" style="font-weight:normal;color:var(--blue);font-size:0.9em;margin-left:6px"></span></label>
+      <div id="subUnits"></div>
+      <input type="text" id="subUnitOther" class="hidden" placeholder="โปรดระบุชื่อสังกัดกอง" style="margin-top:8px">
+      <div class="err">กรุณาเลือกสังกัดกอง</div>
     </div>
     <div class="bar"><button class="ghost" type="button" onclick="go(0)">← หน้าหลัก</button><button class="primary" type="submit">ถัดไป</button></div>
   </form>
@@ -529,10 +547,12 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
         <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
       </div>
       <div class="bar admin-filter-group" style="flex-wrap:wrap;gap:12px;align-items:flex-end">
-        <div><label>กรองตามสังกัด</label>
-        <select id="filter" style="display:block;width:auto;min-width:200px"></select></div>
+        <div><label>กรองตามฝ่าย</label>
+        <select id="filter" style="display:block;width:auto;min-width:170px"></select></div>
+        <div><label>กรองตามกอง</label>
+        <select id="subFilter" style="display:block;width:auto;min-width:170px"><option value="">ทุกกอง</option></select></div>
         <div><label>ค้นหาชื่อ / รหัสพนักงาน</label>
-        <input type="text" id="searchQ" placeholder="พิมพ์เพื่อค้นหา..." style="display:block;width:240px"></div>
+        <input type="text" id="searchQ" placeholder="พิมพ์เพื่อค้นหา..." style="display:block;width:200px"></div>
       </div>
     </div>
 
@@ -589,9 +609,15 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     </div>
 
     <div>
-      <label style="margin-bottom:6px">สังกัด <span class="req">*</span></label>
+      <label style="margin-bottom:6px">สังกัด (ฝ่าย) <span class="req">*</span></label>
       <select id="editUnit" style="width:100%;padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;outline:none;background:#fbfcfe;margin-bottom:8px"></select>
       <input type="text" id="editUnitOther" placeholder="ระบุสังกัดอื่นๆ" class="hidden" style="padding:9px 12px">
+    </div>
+
+    <div id="editSubUnitGroup">
+      <label style="margin-bottom:6px">สังกัด (กอง)</label>
+      <select id="editSubUnit" style="width:100%;padding:9px 12px;font:inherit;border:1.5px solid var(--line);border-radius:9px;outline:none;background:#fbfcfe;margin-bottom:8px"></select>
+      <input type="text" id="editSubUnitOther" placeholder="ระบุกองอื่นๆ" class="hidden" style="padding:9px 12px">
     </div>
 
     <div class="bar" style="margin-top:10px">
@@ -601,35 +627,89 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
   </form>
 </dialog>
 
-<dialog id="headcountDialog" style="width:100%;max-width:440px;border-top:6px solid var(--blue)">
+<dialog id="headcountDialog" style="width:100%;max-width:680px;border-top:6px solid var(--blue)">
   <form id="headcountForm" style="display:flex;flex-direction:column;gap:12px;margin:0">
-    <h3 style="margin:0;color:var(--blue)">ระบุจำนวนบุคลากรแต่ละฝ่าย</h3>
-    <p class="muted" style="margin:0;font-size:13px">กำหนดจำนวนบุคลากรเป้าหมายเพื่อใช้คำนวณร้อยละความครอบคลุมของการประเมิน</p>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h3 style="margin:0;color:var(--blue)">จัดการโครงสร้างองค์กรและกำลังพล (ฝ่าย / กอง)</h3>
+        <p class="muted" style="margin:2px 0 0;font-size:13px">แก้ไข เพิ่ม-ลด ฝ่ายและกอง พร้อมกำหนดจำนวนบุคลากรเป้าหมาย</p>
+      </div>
+    </div>
     
-    <div id="headcountInputs" style="display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto;padding-right:4px;margin-top:4px"></div>
-    
-    <div style="background:var(--bg);padding:10px 14px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;font-weight:700">
-      <span>รวมกำลังพลทั้งหมด:</span>
-      <span style="color:var(--blue);font-size:18px"><span id="headcountTotalSum">0</span> คน</span>
+    <div id="headcountInputs" style="display:flex;flex-direction:column;gap:12px;max-height:480px;overflow-y:auto;padding-right:6px;margin-top:4px"></div>
+
+    <div style="display:flex;gap:8px;align-items:center;background:#f0f5fc;padding:10px 14px;border-radius:10px;border:1.5px dashed var(--blue)">
+      <input type="text" id="newDeptName" placeholder="พิมพ์ชื่อฝ่ายใหม่เพื่อเพิ่ม (เช่น อบค.)" style="flex:1;padding:8px 12px">
+      <button class="primary" type="button" id="addNewDeptBtn" style="white-space:nowrap;padding:8px 16px">+ เพิ่มฝ่าย</button>
     </div>
 
-    <div class="bar" style="margin-top:8px">
+    <div style="background:var(--bg);padding:12px 16px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;font-weight:700">
+      <span>รวมกำลังพลทั้งหมดทั้ง กฟผ. ไทรน้อย:</span>
+      <span style="color:var(--blue);font-size:20px"><span id="headcountTotalSum">0</span> คน</span>
+    </div>
+
+    <div class="bar" style="margin-top:6px">
       <button class="ghost" type="button" onclick="document.getElementById('headcountDialog').close()">ยกเลิก</button>
-      <button class="primary" type="submit">บันทึกข้อมูล</button>
+      <button class="primary" type="submit">บันทึกโครงสร้างและกำลังพล</button>
     </div>
   </form>
 </dialog>
 
 <script>
+const DEFAULT_DEPARTMENTS = {
+  "สก.ชธธ.": {
+    headcount: 330,
+    divisions: {
+      "กปฟร-ธ.": 98, "กปฟรร-ธ.": 70, "กปฟนม-ธ.": 66, "กบคธ-ธ.": 50, "กบห-ธ.": 22, "กศม-ธ.": 13, "ขึ้นตรง ชธธ.": 11
+    }
+  },
+  "อบค.": {
+    headcount: 609,
+    divisions: {
+      "กมน-ธ.": 206, "กกห-ธ.": 162, "กกอ-ธ.": 146, "กฟนม-ธ.": 66, "กผงค-ธ.": 17, "สก. อบค.": 12
+    }
+  },
+  "อบฟ.": {
+    headcount: 455,
+    divisions: {
+      "กบคพ-ธ.": 126, "กบกม-ธ.": 112, "สก. อบฟ.": 69, "กบมอ-ธ.": 63, "กททอ-ธ.": 43, "กมสว-ธ.": 22, "กผงฟ-ธ.": 20
+    }
+  },
+  "อบย.": {
+    headcount: 104,
+    divisions: {
+      "กบร-ธ.": 29, "กวย-ธ.": 28, "กคข-ธ.": 27, "กผงย-ธ.": 16, "สก. อบย.": 4
+    }
+  },
+  "อรอ.": {
+    headcount: 212,
+    divisions: {
+      "กงค-ธ.": 110, "กทค-ธ.": 43, "กบออ-ธ.": 31, "กผงอ-ธ.": 18, "สก. อรอ.": 6, "ขึ้นตรง อรอ.": 4
+    }
+  },
+  "อคม.": {
+    headcount: 149,
+    divisions: {
+      "กคฟ-ธ.": 60, "กคว-ธ.": 34, "กคค-ธ.": 26, "กคภ-ธ.": 13, "กผงม-ธ.": 12, "สก. อคม.": 4
+    }
+  },
+  "อหข.": {
+    headcount: 131,
+    divisions: {
+      "กขส-ห.": 73, "กชย-ห.": 32, "กวข-ห.": 21, "สก. อหข.": 5
+    }
+  }
+};
+
+let DEPARTMENTS = JSON.parse(JSON.stringify(DEFAULT_DEPARTMENTS));
+
 const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อรอ.","อคม.","อหข.","อื่นๆ"];
 
 // จำนวนบุคลากรทั้งหมดของแต่ละสังกัด — ใช้เป็นตัวหารของ "ร้อยละที่ประเมินแล้ว"
-// ★ แก้ตัวเลขตรงนี้ให้ตรงกับกำลังพลจริง
-// ปล่อยเป็น 0 = ยังไม่ได้ตั้งค่า ระบบจะแสดง "—" แทนร้อยละ (ไม่เดาตัวเลขให้)
 const HEADCOUNT = {
-  "สก.ชธธ.": 0, "อบค.": 0, "อบฟ.": 0, "อบย.": 0, "อรอ.": 0, "อคม.": 0, "อหข.": 0,
+  "สก.ชธธ.": 330, "อบค.": 609, "อบฟ.": 455, "อบย.": 104, "อรอ.": 212, "อคม.": 149, "อหข.": 131,
 };
-let TOTAL_HEADCOUNT = 1700; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย — ปรับปรุงอัตโนมัติตามการระบุของแอดมิน
+let TOTAL_HEADCOUNT = 1990; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย
 
 // รูป/เอกสารประกอบแต่ละข้อ — ระบุชื่อไฟล์ตรง ๆ เพราะชื่อไฟล์ไม่ได้เรียงเป็นแบบแผน
 // จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
@@ -735,13 +815,58 @@ function go(n){
 }
 $("#startSurvey").onclick = () => go(1);
 
-// ---- หน้า 1: ตัวเลือกสังกัด
-$("#units").innerHTML = UNITS.map(u =>
-  `<label class="opt"><input type="radio" name="unit" value="${u}" required><span>${u}${u==="อื่นๆ"?" (โปรดระบุ)":""}</span></label>`).join("");
+// ---- หน้า 1: ตัวเลือกสังกัด (ฝ่าย และ กอง)
+function renderUnits() {
+  const currentChecked = document.querySelector("input[name=unit]:checked")?.value;
+  $("#units").innerHTML = UNITS.map(u =>
+    `<label class="opt"><input type="radio" name="unit" value="${u}" required ${currentChecked === u ? 'checked' : ''}><span>${u}${u==="อื่นๆ"?" (โปรดระบุ)":""}</span></label>`).join("");
+}
+
+function renderSubUnits(dept) {
+  const card = $("#subUnitsCard");
+  const subBox = $("#subUnits");
+  const otherInp = $("#subUnitOther");
+  
+  if (!dept || dept === "อื่นๆ" || !DEPARTMENTS[dept]) {
+    card.classList.add("hidden");
+    subBox.innerHTML = "";
+    otherInp.classList.add("hidden");
+    otherInp.required = false;
+    otherInp.value = "";
+    return;
+  }
+  
+  card.classList.remove("hidden");
+  $("#subUnitDeptLabel").textContent = `(ฝ่าย ${dept})`;
+  const divs = Object.keys(DEPARTMENTS[dept].divisions || {});
+  const list = [...divs, "อื่นๆ"];
+  subBox.innerHTML = list.map(sub =>
+    `<label class="opt"><input type="radio" name="subUnit" value="${sub}" required><span>${sub}${sub==="อื่นๆ"?" (โปรดระบุ)":""}</span></label>`).join("");
+  otherInp.classList.add("hidden");
+  otherInp.required = false;
+  otherInp.value = "";
+}
+
+renderUnits();
+
 $("#units").onchange = e => {
-  const other = e.target.value === "อื่นๆ";
-  $("#unitOther").classList.toggle("hidden", !other);
-  $("#unitOther").required = other;
+  const selected = e.target.value;
+  const isOther = selected === "อื่นๆ";
+  $("#unitOther").classList.toggle("hidden", !isOther);
+  $("#unitOther").required = isOther;
+  if (isOther) {
+    $("#unitOther").value = "";
+    renderSubUnits("");
+  } else {
+    renderSubUnits(selected);
+  }
+};
+
+$("#subUnits").onchange = e => {
+  const isOther = e.target.value === "อื่นๆ";
+  $("#subUnitOther").classList.toggle("hidden", !isOther);
+  $("#subUnitOther").required = isOther;
+  if (!isOther) $("#subUnitOther").value = "";
 };
 
 // ---- หน้า 2: สร้างจาก MATRIX
@@ -776,6 +901,7 @@ $("#p2").innerHTML = MATRIX.map(([title, levels], i) => {
 function valid(form){
   let ok = true;
   form.querySelectorAll(".card").forEach(card => {
+    if (card.classList.contains("hidden")) return;
     const bad = [...card.querySelectorAll("input,select")].some(el => !el.checkValidity());
     card.querySelector(".err")?.classList.toggle("on", bad);
     if (bad && ok) { card.scrollIntoView({behavior:"smooth", block:"center"}); ok = false; }
@@ -799,10 +925,16 @@ $("#p1").onsubmit = e => {
   if (!valid(e.target)) return;
   const f = new FormData(e.target);
   const unit = f.get("unit");
+  const subUnitVal = f.get("subUnit");
+  let subUnit = null;
+  if (unit !== "อื่นๆ" && subUnitVal) {
+    subUnit = subUnitVal === "อื่นๆ" ? `อื่นๆ: ${$("#subUnitOther").value.trim()}` : subUnitVal;
+  }
   draft = {
     name: f.get("name").trim(),
     empid: f.get("empid")?.trim() || null,
     unit: unit === "อื่นๆ" ? `อื่นๆ: ${$("#unitOther").value.trim()}` : unit,
+    subUnit: subUnit,
     type: f.get("emptype"),
   };
   go(2);
@@ -861,7 +993,7 @@ $("#p2").onsubmit = async e => {
     const cr = await fetch("/api/check", {
       method: "POST",
       headers: {"content-type": "application/json"},
-      body: JSON.stringify({name: draft.name, empid: draft.empid, unit: draft.unit, type: draft.type}),
+      body: JSON.stringify({name: draft.name, empid: draft.empid, unit: draft.unit, subUnit: draft.subUnit, type: draft.type}),
     });
     if (cr.ok) existing = await cr.json();
   } catch { /* network error — ปล่อยผ่าน ส่งตรงได้เลย */ }
@@ -872,7 +1004,8 @@ $("#p2").onsubmit = async e => {
     const rows = [
       ["ชื่อ - สกุล", existing.name ?? "-", draft.name],
       ...(draft.empid || existing.empid ? [["รหัสพนักงาน", existing.empid ?? "-", draft.empid ?? "-"]] : []),
-      ["สังกัด", existing.unit ?? "-", draft.unit],
+      ["สังกัด (ฝ่าย)", existing.unit ?? "-", draft.unit],
+      ...(draft.subUnit || existing.subUnit ? [["สังกัด (กอง)", existing.subUnit ?? "-", draft.subUnit ?? "-"]] : []),
       ...MATRIX.map(([t], i) => [t, existing.scores?.[i] ?? "-", scores[i]]),
     ];
     $("#diffBody").innerHTML = rows.map(([label, old, nw]) => {
@@ -944,26 +1077,60 @@ $("#closeAdmin").onclick = () => {
   go(0);
   updateHeaderNav();
 };
-$("#filter").onchange = render;
+$("#filter").onchange = () => {
+  populateSubFilter($("#filter").value);
+  render();
+};
+$("#subFilter").onchange = render;
 $("#searchQ").oninput = render;
+
+function populateSubFilter(selDept) {
+  const keep = $("#subFilter").value;
+  let divisions = [];
+  if (selDept && DEPARTMENTS[selDept]) {
+    const defDivs = Object.keys(DEPARTMENTS[selDept].divisions || {});
+    const rowDivs = [...new Set(rows.filter(r => r.unit === selDept && r.subUnit).map(r => r.subUnit))];
+    divisions = [...new Set([...defDivs, ...rowDivs])];
+  } else if (!selDept) {
+    const allDefDivs = Object.values(DEPARTMENTS).flatMap(d => Object.keys(d.divisions || {}));
+    const allRowDivs = [...new Set(rows.filter(r => r.subUnit).map(r => r.subUnit))];
+    divisions = [...new Set([...allDefDivs, ...allRowDivs])];
+  }
+  divisions.sort();
+  $("#subFilter").innerHTML = `<option value="">ทุกกอง${selDept ? ` (ใน ${selDept})` : ""}</option>` +
+    divisions.map(d => `<option value="${d}">${d}</option>`).join("");
+  if (divisions.includes(keep)) {
+    $("#subFilter").value = keep;
+  } else {
+    $("#subFilter").value = "";
+  }
+}
 
 // คืน list ที่กรองปัจจุบัน (ใช้ร่วมกันระหว่าง CSV/xlsx กับตาราง)
 function currentList(){
   const sel = $("#filter").value;
+  const subSel = $("#subFilter").value;
   const sq = ($("#searchQ").value || "").trim().toLowerCase();
   return rows
     .filter(r => !sel || r.unit === sel)
+    .filter(r => !subSel || r.subUnit === subSel)
     .filter(r => !sq || r.name.toLowerCase().includes(sq) || (r.empid ?? "").toLowerCase().includes(sq));
 }
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
 
 // ความครอบคลุม — นับ "คน" ด้วย empid (พนักงาน) หรือ ชื่อ+ฝ่าย (ลูกจ้าง)
-function coverage(list, unit){
+function coverage(list, unit, subUnit){
   const scope = unit ? [unit] : Object.keys(HEADCOUNT);
   const people = new Set(list.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
-  // ถ้าไม่กรอง: ใช้ TOTAL_HEADCOUNT รวม / ถ้ากรองต่อฝ่าย: ใช้ HEADCOUNT[unit]
-  const total  = unit ? (HEADCOUNT[unit] ?? 0) : TOTAL_HEADCOUNT;
+  let total;
+  if (unit && subUnit) {
+    total = DEPARTMENTS[unit]?.divisions?.[subUnit] ?? 0;
+  } else if (unit) {
+    total = HEADCOUNT[unit] ?? 0;
+  } else {
+    total = TOTAL_HEADCOUNT;
+  }
   return {
     people, total,
     deptDone: new Set(list.map(r => r.unit).filter(u => u in HEADCOUNT)).size,
@@ -1019,35 +1186,54 @@ function emmChart(avgs, n){
   </svg>`;
 }
 
+const collapsedDepts = {};
+
+function toggleDeptCollapse(dept) {
+  collapsedDepts[dept] = !collapsedDepts[dept];
+  render();
+}
+
+function filterByDept(unit, subUnit = "") {
+  $("#filter").value = unit;
+  populateSubFilter(unit);
+  $("#subFilter").value = subUnit;
+  render();
+  $("#chart").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function render(){
   $("#cnt").textContent = rows.length;
 
-  // ตัวกรองสังกัด — สร้างจากข้อมูลจริง คงค่าที่เลือกไว้
+  // ตัวกรองสังกัด (ฝ่าย) — สร้างจากข้อมูลจริงและโครงสร้างองค์กร
   const units = [...new Set(rows.map(r => r.unit))].sort();
+  const allDeptNames = [...new Set([...Object.keys(HEADCOUNT), ...units])].filter(u => u !== "อื่นๆ").sort();
   const keep = $("#filter").value;
-  $("#filter").innerHTML = [`<option value="">ทุกสังกัด (${rows.length} คน)</option>`,
-    ...units.map(u => `<option value="${u}">${u} (${rows.filter(r=>r.unit===u).length} คน)</option>`)].join("");
-  $("#filter").value = units.includes(keep) ? keep : "";
+  $("#filter").innerHTML = [`<option value="">ทุกฝ่าย (${rows.length} คน)</option>`,
+    ...allDeptNames.map(u => `<option value="${u}">${u} (${rows.filter(r=>r.unit===u).length} คน)</option>`),
+    ...(rows.some(r => r.unit === "อื่นๆ" || r.unit.startsWith("อื่นๆ: ")) ? [`<option value="อื่นๆ">อื่นๆ</option>`] : [])
+  ].join("");
+  $("#filter").value = (keep && (allDeptNames.includes(keep) || keep === "อื่นๆ")) ? keep : "";
 
-  const sel = keep && units.includes(keep) ? keep : "";
-  const sq = ($("#searchQ").value || "").trim().toLowerCase();
-  const list = rows
-    .filter(r => !sel || r.unit === sel)
-    .filter(r => !sq || r.name.toLowerCase().includes(sq) || (r.empid ?? "").toLowerCase().includes(sq));
+  const sel = $("#filter").value;
+  populateSubFilter(sel);
+  const subSel = $("#subFilter").value;
 
-  const c = coverage(list, sel);
+  const list = currentList();
+
+  const c = coverage(list, sel, subSel);
+  const isDivFiltered = !!(sel && subSel);
   $("#tiles").innerHTML =
     tile("จำนวนฝ่ายที่ประเมิน", `${c.deptDone}<small> / ${c.deptAll} ฝ่าย</small>`) +
-    tile("จำนวนบุคลากรที่ประเมิน",
+    tile(isDivFiltered ? `จำนวนผู้ประเมิน (${subSel})` : "จำนวนบุคลากรที่ประเมิน",
          c.total ? `${c.people}<small> / ${c.total} คน</small>` : `${c.people}<small> คน</small>`,
-         c.total ? "" : "ยังไม่ได้ตั้งค่ากำลังพลใน HEADCOUNT") +
+         c.total ? "" : "ยังไม่ได้ตั้งค่ากำลังพล") +
     tile("คิดเป็นร้อยละของบุคลากร",
          c.pct === null ? "—" : `${c.pct.toFixed(1)}<small> %</small>`,
          c.pct === null ? "ต้องกรอกกำลังพลก่อนจึงคำนวณได้" : "") +
     tile("พนักงาน / ลูกจ้าง",
          `${list.filter(r=>r.empid).length}<small> คน</small> / ${list.filter(r=>!r.empid).length}<small> คน</small>`);
 
-  // ตารางสรุปผลการประเมินแยกตามสังกัด / ฝ่าย
+  // ตารางสรุปผลการประเมินแยกตามสังกัด / ฝ่าย และกอง
   const deptList = Object.keys(HEADCOUNT);
   const otherRows = rows.filter(r => !deptList.includes(r.unit));
   const allDeptsToRender = [...deptList];
@@ -1061,17 +1247,48 @@ function render(){
     const dPct = targetHc > 0 ? (dPeople / targetHc * 100) : null;
     const dAvgs = avgOf(dRows);
     const dOverall = dRows.length ? dAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
-    const isFiltered = sel === dept;
+    const isFilteredDept = sel === dept;
+    const isCollapsed = !!collapsedDepts[dept];
 
-    return `<tr style="${isFiltered ? 'background:#fff8e0;' : ''}">
-      <td><strong>${dept}</strong></td>
-      <td>${dPeople} คน</td>
-      <td>${targetHc ? targetHc + ' คน' : '<span class="muted">—</span>'}</td>
-      <td>${dPct !== null ? `<span style="color:${dPct >= 100 ? '#10b981' : 'var(--blue)'};font-weight:700">${dPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</td>
-      ${dAvgs.map(v => `<td>${dRows.length ? v.toFixed(2) : '—'}</td>`).join('')}
+    const mainDeptRow = `<tr class="dept-row" style="${isFilteredDept && !subSel ? 'background:#fff8e0 !important;' : ''}">
+      <td>
+        ${!isOther ? `<button type="button" class="toggle-dept-btn" onclick="toggleDeptCollapse('${dept}')">${isCollapsed ? '▶' : '▼'}</button>` : ''}
+        <strong>${dept}</strong>
+      </td>
+      <td><strong>${dPeople} คน</strong></td>
+      <td><strong>${targetHc ? targetHc + ' คน' : '<span class="muted">—</span>'}</strong></td>
+      <td><strong>${dPct !== null ? `<span style="color:${dPct >= 100 ? '#10b981' : 'var(--blue)'}">${dPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</strong></td>
+      ${dAvgs.map(v => `<td><strong>${dRows.length ? v.toFixed(2) : '—'}</strong></td>`).join('')}
       <td><strong>${dRows.length ? dOverall.toFixed(2) : '—'}</strong></td>
-      <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${isOther ? "" : dept}')">${isFiltered ? 'กำลังกรอง' : 'เลือกดู'}</button></td>
+      <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${isOther ? "" : dept}', '')">${(isFilteredDept && !subSel) ? 'กำลังกรอง' : 'เลือกดูฝ่าย'}</button></td>
     </tr>`;
+
+    if (isOther || isCollapsed) return mainDeptRow;
+
+    const dDivs = DEPARTMENTS[dept]?.divisions || {};
+    const divNames = [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
+
+    const divisionRowsHtml = divNames.map(divName => {
+      const divRows = dRows.filter(r => r.subUnit === divName);
+      const divPeople = new Set(divRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+      const divTargetHc = dDivs[divName] ?? 0;
+      const divPct = divTargetHc > 0 ? (divPeople / divTargetHc * 100) : null;
+      const divAvgs = avgOf(divRows);
+      const divOverall = divRows.length ? divAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
+      const isFilteredDiv = (sel === dept && subSel === divName);
+
+      return `<tr class="sub-row" style="${isFilteredDiv ? 'background:#fff8e0;' : ''}">
+        <td style="padding-left:26px;color:var(--muted)">↳ ${divName}</td>
+        <td>${divPeople} คน</td>
+        <td>${divTargetHc ? divTargetHc + ' คน' : '<span class="muted">—</span>'}</td>
+        <td>${divPct !== null ? `<span style="color:${divPct >= 100 ? '#10b981' : 'var(--blue)'};font-weight:600">${divPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</td>
+        ${divAvgs.map(v => `<td>${divRows.length ? v.toFixed(2) : '—'}</td>`).join('')}
+        <td>${divRows.length ? divOverall.toFixed(2) : '—'}</td>
+        <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${dept}', '${divName}')">${isFilteredDiv ? 'กำลังกรอง' : 'เลือกดูกอง'}</button></td>
+      </tr>`;
+    }).join('');
+
+    return mainDeptRow + divisionRowsHtml;
   }).join('');
 
   const overallHc = TOTAL_HEADCOUNT;
@@ -1087,13 +1304,13 @@ function render(){
     <td>${overallPct !== null ? `${overallPct.toFixed(1)}%` : '—'}</td>
     ${allDeptsAvgs.map(v => `<td>${rows.length ? v.toFixed(2) : '—'}</td>`).join('')}
     <td>${rows.length ? allDeptsOverall.toFixed(2) : '—'}</td>
-    <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('')">ทั้งหมด</button></td>
+    <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('', '')">ทั้งหมด</button></td>
   </tr>`;
 
   $("#deptSummaryTbl").innerHTML = `
     <thead>
       <tr>
-        <th>สังกัด / ฝ่าย</th>
+        <th>สังกัด (ฝ่าย / กอง)</th>
         <th>ประเมินแล้ว</th>
         <th>กำลังพล</th>
         <th>ร้อยละ</th>
@@ -1115,11 +1332,11 @@ function render(){
     MATRIX.map(([t], i) => `<tr><td>${i+1}. ${t}</td><td>${avgs[i].toFixed(2)}</td></tr>`).join("");
 
   $("#tbl").innerHTML =
-    `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>สังกัด</th>` +
+    `<tr><th>วันที่</th><th>ชื่อ - สกุล</th><th>รหัสพนักงาน</th><th>ฝ่าย</th><th>กอง</th>` +
     MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th></th></tr>` +
     list.map(r => {
       const i = rows.indexOf(r);
-      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td>` +
+      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td><td>${r.subUnit ?? "—"}</td>` +
         r.scores.map(s=>`<td>${s}</td>`).join("") +
         `<td>` +
         `<button class="edit-btn" onclick="editRow(${i})">แก้ไข</button>` +
@@ -1130,10 +1347,10 @@ function render(){
 
 $("#csv").onclick = () => {
   const esc = v => `"${String(v).replace(/"/g,'""')}"`;
-  const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","สังกัด", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`)];
-  const body = currentList().map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, ...r.scores]);
+  const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","ฝ่าย","กอง", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`)];
+  const body = currentList().map(r => [new Date(r.at).toLocaleString("th-TH"), r.name, r.empid, r.unit, r.subUnit ?? "", ...r.scores]);
   // ponytail: BOM นำหน้า เพื่อให้ Excel อ่านภาษาไทยถูก
-  const blob = new Blob(["﻿" + [head, ...body].map(r=>r.map(esc).join(",")).join("\r\n")], {type:"text/csv"});
+  const blob = new Blob(["\ufeff" + [head, ...body].map(r=>r.map(esc).join(",")).join("\r\n")], {type:"text/csv"});
   const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(blob), download: "energy-survey.csv"});
   a.click(); URL.revokeObjectURL(a.href);
 };
@@ -1179,6 +1396,36 @@ async function delRow(i) {
 
 let editIndex = -1;
 
+function populateEditSubUnit(dept, currentSubUnit) {
+  if (dept === "อื่นๆ" || !DEPARTMENTS[dept]) {
+    $("#editSubUnitGroup").classList.add("hidden");
+    $("#editSubUnit").innerHTML = "";
+    $("#editSubUnitOther").classList.add("hidden");
+    $("#editSubUnitOther").required = false;
+    return;
+  }
+  $("#editSubUnitGroup").classList.remove("hidden");
+  const divs = Object.keys(DEPARTMENTS[dept].divisions || {});
+  $("#editSubUnit").innerHTML = divs.map(d => `<option value="${d}">${d}</option>`).join("") + `<option value="อื่นๆ">อื่นๆ</option>`;
+  
+  if (currentSubUnit && divs.includes(currentSubUnit)) {
+    $("#editSubUnit").value = currentSubUnit;
+    $("#editSubUnitOther").value = "";
+    $("#editSubUnitOther").classList.add("hidden");
+    $("#editSubUnitOther").required = false;
+  } else if (currentSubUnit) {
+    $("#editSubUnit").value = "อื่นๆ";
+    $("#editSubUnitOther").value = currentSubUnit.startsWith("อื่นๆ: ") ? currentSubUnit.slice(7) : currentSubUnit;
+    $("#editSubUnitOther").classList.remove("hidden");
+    $("#editSubUnitOther").required = true;
+  } else {
+    if (divs.length > 0) $("#editSubUnit").value = divs[0];
+    $("#editSubUnitOther").value = "";
+    $("#editSubUnitOther").classList.add("hidden");
+    $("#editSubUnitOther").required = false;
+  }
+}
+
 $("#editType").onchange = () => {
   const isEmp = $("#editType").value === "พนักงาน";
   $("#editEmpidGroup").classList.toggle("hidden", !isEmp);
@@ -1187,10 +1434,19 @@ $("#editType").onchange = () => {
 };
 
 $("#editUnit").onchange = () => {
-  const isOther = $("#editUnit").value === "อื่นๆ";
+  const dept = $("#editUnit").value;
+  const isOther = dept === "อื่นๆ";
   $("#editUnitOther").classList.toggle("hidden", !isOther);
   $("#editUnitOther").required = isOther;
   if (!isOther) $("#editUnitOther").value = "";
+  populateEditSubUnit(dept, "");
+};
+
+$("#editSubUnit").onchange = () => {
+  const isOther = $("#editSubUnit").value === "อื่นๆ";
+  $("#editSubUnitOther").classList.toggle("hidden", !isOther);
+  $("#editSubUnitOther").required = isOther;
+  if (!isOther) $("#editSubUnitOther").value = "";
 };
 
 function editRow(i) {
@@ -1198,7 +1454,8 @@ function editRow(i) {
   const r = rows[i];
   
   // Populate edit unit options
-  $("#editUnit").innerHTML = UNITS.map(u => `<option value="${u}">${u}</option>`).join("");
+  const depts = Object.keys(DEPARTMENTS);
+  $("#editUnit").innerHTML = depts.map(u => `<option value="${u}">${u}</option>`).join("") + `<option value="อื่นๆ">อื่นๆ</option>`;
   
   const type = r.type ?? (r.empid ? "พนักงาน" : "ลูกจ้าง");
   $("#editType").value = type;
@@ -1210,17 +1467,18 @@ function editRow(i) {
   
   $("#editName").value = r.name;
   
-  const standard = UNITS.slice(0, -1);
-  if (standard.includes(r.unit)) {
+  if (depts.includes(r.unit)) {
     $("#editUnit").value = r.unit;
     $("#editUnitOther").value = "";
     $("#editUnitOther").classList.add("hidden");
     $("#editUnitOther").required = false;
+    populateEditSubUnit(r.unit, r.subUnit);
   } else {
     $("#editUnit").value = "อื่นๆ";
     $("#editUnitOther").value = r.unit.startsWith("อื่นๆ: ") ? r.unit.slice(7) : r.unit;
     $("#editUnitOther").classList.remove("hidden");
     $("#editUnitOther").required = true;
+    populateEditSubUnit("อื่นๆ", r.subUnit);
   }
   
   $("#editDialog").showModal();
@@ -1234,6 +1492,11 @@ $("#editForm").onsubmit = async e => {
   const empid = type === "พนักงาน" ? $("#editEmpid").value.trim() : null;
   const unitVal = $("#editUnit").value;
   const unit = unitVal === "อื่นๆ" ? `อื่นๆ: ${$("#editUnitOther").value.trim()}` : unitVal;
+  let subUnit = null;
+  if (unitVal !== "อื่นๆ") {
+    const subVal = $("#editSubUnit").value;
+    subUnit = subVal === "อื่นๆ" ? `อื่นๆ: ${$("#editSubUnitOther").value.trim()}` : subVal;
+  }
   
   const saveBtn = e.target.querySelector("button[type=submit]");
   saveBtn.disabled = true; saveBtn.textContent = "กำลังบันทึก...";
@@ -1247,6 +1510,7 @@ $("#editForm").onsubmit = async e => {
         name,
         empid,
         unit,
+        subUnit,
         type,
         scores: r.scores,
         at: r.at
@@ -1261,6 +1525,7 @@ $("#editForm").onsubmit = async e => {
       name,
       empid,
       unit,
+      subUnit,
       type,
       _blobUrl: data.url || r._blobUrl
     };
@@ -1274,10 +1539,11 @@ $("#editForm").onsubmit = async e => {
   }
 };
 
-function filterByDept(unit) {
-  $("#filter").value = unit;
-  render();
-  $("#chart").scrollIntoView({ behavior: "smooth", block: "start" });
+function syncUnits() {
+  const deptKeys = Object.keys(DEPARTMENTS);
+  UNITS.length = 0;
+  UNITS.push(...deptKeys, "อื่นๆ");
+  renderUnits();
 }
 
 const loadHeadcount = async () => {
@@ -1285,61 +1551,213 @@ const loadHeadcount = async () => {
     const r = await fetch("/api/headcount");
     if (!r.ok) throw new Error(await errMsg(r));
     const data = await r.json();
-    if (data && data.headcount) {
-      Object.assign(HEADCOUNT, data.headcount);
+    if (data) {
+      if (data.departments) {
+        DEPARTMENTS = data.departments;
+        for (const k of Object.keys(HEADCOUNT)) {
+          if (!(k in DEPARTMENTS)) delete HEADCOUNT[k];
+        }
+        for (const [dept, d] of Object.entries(DEPARTMENTS)) {
+          HEADCOUNT[dept] = d.headcount ?? 0;
+        }
+      } else if (data.headcount) {
+        Object.assign(HEADCOUNT, data.headcount);
+      }
       if (data.total) TOTAL_HEADCOUNT = data.total;
+      syncUnits();
     }
   } catch (err) {
     try {
       const cached = (typeof localStorage !== "undefined" && localStorage) ? localStorage.getItem("energysave_headcount") : null;
       if (cached) {
         const d = JSON.parse(cached);
-        if (d.headcount) Object.assign(HEADCOUNT, d.headcount);
+        if (d.departments) {
+          DEPARTMENTS = d.departments;
+          for (const k of Object.keys(HEADCOUNT)) {
+            if (!(k in DEPARTMENTS)) delete HEADCOUNT[k];
+          }
+          for (const [dept, d] of Object.entries(DEPARTMENTS)) {
+            HEADCOUNT[dept] = d.headcount ?? 0;
+          }
+        } else if (d.headcount) {
+          Object.assign(HEADCOUNT, d.headcount);
+        }
         if (d.total) TOTAL_HEADCOUNT = d.total;
+        syncUnits();
       }
     } catch {}
   }
 };
 
-function recalcHeadcountSum() {
-  const inputs = document.querySelectorAll(".hc-input");
-  let sum = 0;
-  inputs.forEach(inp => {
-    sum += Math.max(0, parseInt(inp.value, 10) || 0);
+let workingDepts = {};
+
+function saveCurrentDialogToWorking() {
+  const nextDepts = {};
+  document.querySelectorAll(".dept-box").forEach(box => {
+    const dept = box.dataset.dept;
+    nextDepts[dept] = { headcount: 0, divisions: {} };
+    let deptSum = 0;
+    box.querySelectorAll(".div-item-row").forEach(row => {
+      const nameInp = row.querySelector(".div-name-input");
+      const hcInp = row.querySelector(".div-hc-input");
+      const dName = (nameInp ? nameInp.value : row.dataset.div).trim();
+      const dHc = Math.max(0, parseInt(hcInp ? hcInp.value : 0, 10) || 0);
+      if (dName) {
+        nextDepts[dept].divisions[dName] = dHc;
+        deptSum += dHc;
+      }
+    });
+    nextDepts[dept].headcount = deptSum;
   });
-  $("#headcountTotalSum").textContent = sum;
-  return sum;
+  workingDepts = nextDepts;
 }
 
-$("#headcountBtn").onclick = () => {
-  const depts = Object.keys(HEADCOUNT);
-  $("#headcountInputs").innerHTML = depts.map(dept => `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <label style="margin:0;font-size:14px;min-width:90px">${dept}</label>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input type="number" min="0" step="1" name="hc_${dept}" class="hc-input" data-dept="${dept}" value="${HEADCOUNT[dept] ?? 0}" style="width:110px;padding:6px 10px;text-align:right" required>
-        <span style="font-size:13px;color:var(--muted)">คน</span>
-      </div>
-    </div>
-  `).join('');
+function recalcHeadcountSum() {
+  let totalSum = 0;
+  const deptBoxes = document.querySelectorAll(".dept-box");
+  deptBoxes.forEach(box => {
+    const hcInputs = box.querySelectorAll(".div-hc-input");
+    let deptSum = 0;
+    hcInputs.forEach(inp => {
+      deptSum += Math.max(0, parseInt(inp.value, 10) || 0);
+    });
+    const subtotalEl = box.querySelector(".dept-subtotal");
+    if (subtotalEl) subtotalEl.textContent = deptSum;
+    totalSum += deptSum;
+  });
+  const totalEl = $("#headcountTotalSum");
+  if (totalEl) totalEl.textContent = totalSum;
+  return totalSum;
+}
 
-  document.querySelectorAll(".hc-input").forEach(inp => {
+function attachHeadcountLiveListeners() {
+  document.querySelectorAll(".div-hc-input").forEach(inp => {
     inp.addEventListener("input", recalcHeadcountSum);
   });
+}
 
+function renderHeadcountManager() {
+  const container = $("#headcountInputs");
+  const depts = Object.keys(workingDepts);
+  
+  if (depts.length === 0) {
+    container.innerHTML = `<p class="muted" style="text-align:center;padding:16px">ยังไม่มีฝ่ายในระบบ กรุณากด "+ เพิ่มฝ่าย" ด้านล่าง</p>`;
+    recalcHeadcountSum();
+    return;
+  }
+
+  container.innerHTML = depts.map((dept, dIdx) => {
+    const dData = workingDepts[dept] || { headcount: 0, divisions: {} };
+    const divisions = Object.entries(dData.divisions || {});
+    const deptDivSum = divisions.reduce((s, [_, hc]) => s + (parseInt(hc, 10) || 0), 0);
+    const deptHc = divisions.length > 0 ? deptDivSum : (parseInt(dData.headcount, 10) || 0);
+
+    const divisionsHtml = divisions.map(([divName, hc]) => `
+      <div class="div-item-row" data-dept="${dept}" data-div="${divName}" style="display:flex;align-items:center;gap:8px;padding:4px 0">
+        <span style="color:var(--muted);font-size:12px;width:14px">↳</span>
+        <input type="text" class="div-name-input" value="${divName}" placeholder="ชื่อกอง" style="flex:1;padding:6px 10px;font-size:13px" required>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input type="number" min="0" step="1" class="div-hc-input" value="${hc}" style="width:80px;padding:6px 8px;font-size:13px;text-align:right" required>
+          <span style="font-size:12px;color:var(--muted)">คน</span>
+        </div>
+        <button type="button" class="del-btn" style="padding:2px 7px;font-size:13px;line-height:1" title="ลบกองนี้" onclick="removeDivisionFromDept('${dept}', '${divName}')">✕</button>
+      </div>
+    `).join("");
+
+    return `
+      <div class="dept-box" data-dept="${dept}" style="background:#fbfcfe;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #edf2f7">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-weight:700;color:var(--blue);font-size:15px">${dept}</span>
+            <span style="font-size:12px;color:var(--muted)">(${divisions.length} กอง)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;font-weight:600">รวมฝ่าย: <span class="dept-subtotal">${deptHc}</span> คน</span>
+            <button type="button" class="del-btn" style="padding:2px 7px;font-size:11px" onclick="removeDeptFromWorking('${dept}')">ลบฝ่าย</button>
+          </div>
+        </div>
+
+        <div class="dept-divisions-container" style="display:flex;flex-direction:column;gap:4px;padding-left:6px">
+          ${divisionsHtml}
+        </div>
+
+        <div style="margin-top:8px;padding-top:6px;border-top:1px dashed #e2e8f0;display:flex;gap:6px;align-items:center">
+          <input type="text" id="newDivName_${dIdx}" placeholder="ชื่อกองใหม่ (เช่น กมน-ธ.)" style="flex:1;padding:5px 9px;font-size:12px">
+          <input type="number" min="0" step="1" id="newDivHc_${dIdx}" placeholder="กำลังพล" style="width:75px;padding:5px 8px;font-size:12px;text-align:right">
+          <button type="button" class="ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap" onclick="addDivisionToDept('${dept}', ${dIdx})">+ เพิ่มกอง</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  attachHeadcountLiveListeners();
   recalcHeadcountSum();
+}
+
+function removeDivisionFromDept(dept, divName) {
+  saveCurrentDialogToWorking();
+  if (workingDepts[dept] && workingDepts[dept].divisions) {
+    delete workingDepts[dept].divisions[divName];
+  }
+  renderHeadcountManager();
+}
+
+function addDivisionToDept(dept, dIdx) {
+  const nameInp = document.getElementById("newDivName_" + dIdx);
+  const hcInp = document.getElementById("newDivHc_" + dIdx);
+  const divName = nameInp ? nameInp.value.trim() : "";
+  if (!divName) {
+    alert("กรุณาระบุชื่อกอง");
+    if (nameInp) nameInp.focus();
+    return;
+  }
+  const hc = Math.max(0, parseInt(hcInp ? hcInp.value : 0, 10) || 0);
+  saveCurrentDialogToWorking();
+  if (!workingDepts[dept]) workingDepts[dept] = { headcount: 0, divisions: {} };
+  if (!workingDepts[dept].divisions) workingDepts[dept].divisions = {};
+  workingDepts[dept].divisions[divName] = hc;
+  renderHeadcountManager();
+}
+
+function removeDeptFromWorking(dept) {
+  if (!confirm(`ต้องการลบฝ่าย "${dept}" และกองทั้งหมดในฝ่ายนี้?`)) return;
+  saveCurrentDialogToWorking();
+  delete workingDepts[dept];
+  renderHeadcountManager();
+}
+
+$("#addNewDeptBtn").onclick = () => {
+  const nameInp = $("#newDeptName");
+  const deptName = nameInp ? nameInp.value.trim() : "";
+  if (!deptName) {
+    alert("กรุณาระบุชื่อฝ่ายใหม่");
+    if (nameInp) nameInp.focus();
+    return;
+  }
+  saveCurrentDialogToWorking();
+  if (workingDepts[deptName]) {
+    alert("ฝ่ายนี้มีอยู่ในระบบแล้ว");
+    return;
+  }
+  workingDepts[deptName] = { headcount: 0, divisions: {} };
+  nameInp.value = "";
+  renderHeadcountManager();
+};
+
+$("#headcountBtn").onclick = () => {
+  workingDepts = JSON.parse(JSON.stringify(DEPARTMENTS));
+  renderHeadcountManager();
   $("#headcountDialog").showModal();
 };
 
 $("#headcountForm").onsubmit = async e => {
   e.preventDefault();
-  const inputs = document.querySelectorAll(".hc-input");
-  const newHeadcount = {};
-  inputs.forEach(inp => {
-    const dept = inp.dataset.dept;
-    newHeadcount[dept] = Math.max(0, parseInt(inp.value, 10) || 0);
-  });
-  const total = recalcHeadcountSum();
+  saveCurrentDialogToWorking();
+
+  const total = Object.values(workingDepts).reduce((s, d) => s + (d.headcount || 0), 0);
+  const headcountPayload = Object.fromEntries(
+    Object.entries(workingDepts).map(([dept, d]) => [dept, d.headcount || 0])
+  );
 
   const saveBtn = e.target.querySelector("button[type=submit]");
   saveBtn.disabled = true; saveBtn.textContent = "กำลังบันทึก...";
@@ -1348,22 +1766,37 @@ $("#headcountForm").onsubmit = async e => {
     const res = await fetch("/api/headcount", {
       method: "POST",
       headers: { "content-type": "application/json", ...authHdr(adminPw) },
-      body: JSON.stringify({ headcount: newHeadcount, total }),
+      body: JSON.stringify({
+        departments: workingDepts,
+        headcount: headcountPayload,
+        total
+      }),
     });
     if (!res.ok) throw new Error(await errMsg(res));
     const data = await res.json();
 
-    Object.assign(HEADCOUNT, data.headcount);
-    TOTAL_HEADCOUNT = data.total;
+    if (data.departments) {
+      DEPARTMENTS = data.departments;
+    }
+    if (data.headcount) {
+      for (const k of Object.keys(HEADCOUNT)) {
+        if (!(k in data.headcount)) delete HEADCOUNT[k];
+      }
+      Object.assign(HEADCOUNT, data.headcount);
+    }
+    if (data.total) TOTAL_HEADCOUNT = data.total;
+
+    syncUnits();
+
     try { localStorage.setItem("energysave_headcount", JSON.stringify(data)); } catch {}
 
     $("#headcountDialog").close();
     render();
-    alert("บันทึกจำนวนบุคลากรเรียบร้อยแล้ว");
+    alert("บันทึกโครงสร้างองค์กรและกำลังพลเรียบร้อยแล้ว");
   } catch (err) {
     alert("บันทึกไม่สำเร็จ: " + err.message);
   } finally {
-    saveBtn.disabled = false; saveBtn.textContent = "บันทึกข้อมูล";
+    saveBtn.disabled = false; saveBtn.textContent = "บันทึกโครงสร้างและกำลังพล";
   }
 };
 

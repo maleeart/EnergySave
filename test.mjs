@@ -25,9 +25,18 @@ for (const [label, body] of [
   ["คะแนนติดลบ",        {...ok, scores: [-1,3,2,1,0,4]}],
   ["คะแนนไม่ใช่จำนวนเต็ม", {...ok, scores: [1.5,3,2,1,0,4]}],
   ["scores ไม่ใช่ array", {...ok, scores: "4,3,2,1,0,4"}],
+  ["subUnit ไม่ใช่ string", {...ok, subUnit: 123}],
+  ["subUnit ยาวเกิน",   {...ok, subUnit: "ก".repeat(121)}],
 ]) {
   assert.equal((await call(submit, {body})).code, 400, `ต้องปฏิเสธ: ${label}`);
 }
+
+// submit ข้อมูลพร้อม subUnit ถูกต้อง
+globalThis.__blobMock = [];
+const subOk = await call(submit, {body: {...ok, subUnit: "กมน-ธ."}});
+assert.equal(subOk.code, 201, "submit พร้อม subUnit ต้องได้ 201");
+assert.equal(globalThis.__blobMock[0]?.subUnit, "กมน-ธ.", "subUnit ต้องถูกบันทึก");
+delete globalThis.__blobMock;
 
 // --- responses: ต้องกันคนที่ไม่มีรหัสผ่าน ---
 delete process.env.ADMIN_PASSWORD;
@@ -51,8 +60,8 @@ const el = new Proxy({}, {get: (t, k) => k in t ? t[k] : (t[k] = k === "value" ?
                         set: (t, k, v) => (t[k] = v, true)});
 const ctx = vm.createContext({document: {querySelector: () => el, querySelectorAll: () => [el]}, localStorage: null, console});
 vm.runInContext(src, ctx);
-const { emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT } =
-  vm.runInContext("({emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT})", ctx);
+const { emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS } =
+  vm.runInContext("({emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS})", ctx);
 
 assert.equal(MATRIX.length, 6, "EMM ต้องมี 6 หัวข้อ");
 
@@ -76,6 +85,12 @@ assert.ok(Math.abs((ry2 - ry4) - (ry0 - ry2)) < 0.5, "ระดับ 2 ต้�
 
 assert.match(emmChart([0,0,0,0,0,0], 0), /ยังไม่มีข้อมูล/, "ไม่มีข้อมูลต้องไม่วาดกราฟเปล่า");
 
+// --- โครงสร้างองค์กร 7 ฝ่าย 39 กอง 1,990 คน ---
+assert.equal(Object.keys(DEFAULT_DEPARTMENTS).length, 7, "ต้องมี 7 ฝ่ายเริ่มต้น");
+const totalDivisions = Object.values(DEFAULT_DEPARTMENTS).reduce((s, d) => s + Object.keys(d.divisions).length, 0);
+assert.equal(totalDivisions, 41, "ต้องมี 41 กองเริ่มต้นตามแผนผัง");
+assert.equal(TOTAL_HEADCOUNT, 1990, "กำลังพลรวมเริ่มต้นต้องเป็น 1990 คน");
+
 // --- ความครอบคลุม: นับคนไม่ซ้ำ และไม่โชว์ร้อยละมั่วเมื่อยังไม่ตั้งกำลังพล ---
 const r = (empid, unit) => ({empid, unit, scores: [2,2,2,2,2,2]});
 
@@ -85,6 +100,13 @@ assert.equal(c.deptDone, 2, "ต้องนับได้ 2 ฝ่าย");
 assert.equal(c.deptAll, Object.keys(HEADCOUNT).length, "ฝ่ายทั้งหมดต้องมาจาก HEADCOUNT");
 assert.equal(c.total, TOTAL_HEADCOUNT, "ภาพรวมต้องใช้ TOTAL_HEADCOUNT เป็นตัวหาร");
 assert.ok(c.pct !== null && c.pct > 0, "ตั้ง TOTAL_HEADCOUNT แล้วต้องคำนวณร้อยละได้");
+
+// ทดสอบความครอบคลุมระดับกอง
+const divR = (empid, unit, subUnit) => ({empid, unit, subUnit, scores: [2,2,2,2,2,2]});
+const divCov = coverage([divR("1", "อบค.", "กมน-ธ."), divR("2", "อบค.", "กมน-ธ.")], "อบค.", "กมน-ธ.");
+assert.equal(divCov.people, 2, "ผู้ประเมินระดับกองต้องนับได้ 2 คน");
+assert.equal(divCov.total, 206, "กอง กมน-ธ. ต้องมีกำลังพล 206 คน");
+assert.ok(Math.abs(divCov.pct - (2/206*100)) < 0.01, "ร้อยละระดับกองต้องคำนวณถูก");
 
 // "อื่นๆ" ไม่อยู่ใน HEADCOUNT จึงไม่ควรถูกนับเป็นฝ่าย
 assert.equal(coverage([r("9","อื่นๆ: หน่วยงานอื่น")], "").deptDone, 0, "สังกัดอื่นๆ ต้องไม่นับเป็นฝ่าย");
@@ -162,17 +184,19 @@ assert.equal((await call(updateHandler, {
 })).code, 400, "update: ชื่อว่างต้องได้ 400");
 
 globalThis.__blobMock = [
-  { name: "สมชาย ทดสอบ", empid: "88888", unit: "อบค.", type: "พนักงาน", scores: [1, 2, 3, 4, 0, 1], at: mockPerson.at, _blobUrl: "mock-url-123" }
+  { name: "สมชาย ทดสอบ", empid: "88888", unit: "อบค.", subUnit: "กมน-ธ.", type: "พนักงาน", scores: [1, 2, 3, 4, 0, 1], at: mockPerson.at, _blobUrl: "mock-url-123" }
 ];
 const updateRes = await call(updateHandler, {
   headers: { "x-admin-password": "M@lee8888" },
   body: {
     ...mockPerson,
-    name: "สมชาย แก้ไขแล้ว"
+    name: "สมชาย แก้ไขแล้ว",
+    subUnit: "กกห-ธ."
   }
 });
 assert.equal(updateRes.code, 200, "update: ข้อมูลถูกต้องต้องได้ 200");
 assert.equal(globalThis.__blobMock[0].name, "สมชาย แก้ไขแล้ว", "ข้อมูลใน mock ต้องอัปเดตแล้ว");
+assert.equal(globalThis.__blobMock[0].subUnit, "กกห-ธ.", "subUnit ใน mock ต้องอัปเดตแล้ว");
 
 delete globalThis.__blobMock;
 
@@ -183,6 +207,8 @@ const headcountHandler = (await import("./api/headcount.js")).default;
 const getInitRes = await call(headcountHandler, { method: "GET" });
 assert.equal(getInitRes.code, 200, "headcount: GET ต้องได้ 200");
 assert.ok(getInitRes.body.headcount, "headcount: ต้องมี object headcount");
+assert.ok(getInitRes.body.departments, "headcount: ต้องมี object departments");
+assert.equal(Object.keys(getInitRes.body.departments).length, 7, "headcount: เริ่มต้นต้องมี 7 ฝ่าย");
 
 // 2. POST ต้องกันคนไม่มีรหัสผ่าน
 assert.equal((await call(headcountHandler, {
@@ -219,6 +245,31 @@ assert.equal(postValidRes.body.total, 300, "headcount: ผลรวมกำล�
 const getUpdatedRes = await call(headcountHandler, { method: "GET" });
 assert.equal(getUpdatedRes.body.headcount["อบค."], 100, "headcount: GET ต้องได้ค่าที่เพิ่งอัปเดต");
 assert.equal(getUpdatedRes.body.total, 300, "headcount: total ต้องเป็น 300");
+
+// 6. POST บันทึกโครงสร้าง 2 ระดับ (departments + divisions)
+const postHierarchicalRes = await call(headcountHandler, {
+  method: "POST",
+  headers: { "x-admin-password": "M@lee8888" },
+  body: {
+    departments: {
+      "อบค.": {
+        headcount: 250,
+        divisions: { "กมน-ธ.": 150, "กกห-ธ.": 100 }
+      },
+      "ฝ่ายทดสอบ": {
+        headcount: 50,
+        divisions: { "กองทดสอบ 1": 50 }
+      }
+    }
+  }
+});
+assert.equal(postHierarchicalRes.code, 200, "headcount: บันทึกโครงสร้าง 2 ระดับต้องได้ 200");
+assert.equal(postHierarchicalRes.body.total, 300, "headcount: ผลรวมกำลังพลฝ่ายและกองต้องได้ 300");
+assert.ok(postHierarchicalRes.body.departments["ฝ่ายทดสอบ"], "headcount: ต้องมีฝ่ายใหม่");
+assert.equal(postHierarchicalRes.body.departments["ฝ่ายทดสอบ"].divisions["กองทดสอบ 1"], 50);
+
+const getHierarchicalRes = await call(headcountHandler, { method: "GET" });
+assert.equal(getHierarchicalRes.body.departments["ฝ่ายทดสอบ"].divisions["กองทดสอบ 1"], 50);
 
 delete globalThis.__blobMock;
 delete globalThis.__headcountMock;
