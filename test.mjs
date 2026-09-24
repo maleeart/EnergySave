@@ -5,7 +5,7 @@ import submit from "./api/submit.js";
 import responses from "./api/responses.js";
 
 const call = (handler, req) => new Promise(done => {
-  const res = { status(c){ this.code = c; return this; }, json(b){ done({code: this.code, body: b}); } };
+  const res = { status(c){ this.code = c; return this; }, json(b){ done({code: this.code ?? 200, body: b}); }, end(){ done({code: this.code ?? 200}); } };
   handler({ method: "POST", headers: {}, ...req }, res);
 });
 
@@ -60,8 +60,13 @@ const el = new Proxy({}, {get: (t, k) => k in t ? t[k] : (t[k] = k === "value" ?
                         set: (t, k, v) => (t[k] = v, true)});
 const ctx = vm.createContext({document: {querySelector: () => el, querySelectorAll: () => [el]}, localStorage: null, console});
 vm.runInContext(src, ctx);
-const { emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS } =
-  vm.runInContext("({emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS})", ctx);
+const { emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS, normName: htmlNormName } =
+  vm.runInContext("({emmChart, avgOf, MATRIX, coverage, HEADCOUNT, TOTAL_HEADCOUNT, DEFAULT_DEPARTMENTS, DEPARTMENTS, normName})", ctx);
+
+assert.equal(htmlNormName("นส ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา", "normName ใน index.html ต้องตัด นส ได้");
+assert.equal(htmlNormName("นางสาว ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา", "normName ใน index.html ต้องตัด นางสาว ได้");
+assert.equal(htmlNormName("น.ส. ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา", "normName ใน index.html ต้องตัด น.ส. ได้");
+assert.equal(htmlNormName("นสวรรณ สวยงาม"), "นสวรรณ สวยงาม", "normName ใน index.html ต้องไม่ตัดชื่อจริง");
 
 assert.equal(MATRIX.length, 6, "EMM ต้องมี 6 หัวข้อ");
 
@@ -274,4 +279,123 @@ assert.equal(getHierarchicalRes.body.departments["ฝ่ายทดสอบ"].
 delete globalThis.__blobMock;
 delete globalThis.__headcountMock;
 
-console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel, update และ headcount");
+// --- ตรวจสอบการตัดคำนำหน้า (normName) และการตรวจจับข้อมูลซ้ำ (api/check.js) ---
+import { normName } from "./api/_blob.js";
+import checkHandler from "./api/check.js";
+
+assert.equal(normName("นาย สมชาย ใจดี"), "สมชาย ใจดี");
+assert.equal(normName("นาง สมหญิง ใจดี"), "สมหญิง ใจดี");
+assert.equal(normName("นางสาว ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(normName("นส ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(normName("น.ส. ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(normName("นส. ธิฌาดา จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(normName("น.ส ธิฌาดา   จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(normName("นสวรรณ สวยงาม"), "นสวรรณ สวยงาม", "ต้องไม่ตัด 'นส' ที่เป็นส่วนหนึ่งของชื่อจริง");
+
+// ทดสอบ checkHandler method GET ต้อง 405
+assert.equal((await call(checkHandler, { method: "GET" })).code, 405, "check: GET ต้อง 405");
+assert.equal((await call(checkHandler, { body: {} })).code, 400, "check: ไม่มี name/unit ต้อง 400");
+
+// จำลองข้อมูลเดิมใน mock: กรณี 'นางสาว ธิฌาดา' ทำไว้ตอนเดือน 7 ในสังกัดเดิม 'สก.ชธธ.'
+globalThis.__blobMock = [
+  {
+    name: "นางสาว ธิฌาดา จันทร์ศิริชญา",
+    empid: null,
+    unit: "สก.ชธธ.",
+    subUnit: null,
+    type: "ลูกจ้าง",
+    scores: [3, 3, 2, 2, 1, 3],
+    at: "2024-07-15T08:30:00.000Z",
+    _blobUrl: "mock-url-thichada-old"
+  },
+  {
+    name: "นาย สมชาย ใจดี",
+    empid: "12345",
+    unit: "อบค.",
+    subUnit: "กมน-ธ.",
+    type: "พนักงาน",
+    scores: [4, 4, 4, 4, 4, 4],
+    at: "2024-08-01T10:00:00.000Z",
+    _blobUrl: "mock-url-somchai"
+  },
+  {
+    name: "นาย สมชาย ใจดี",
+    empid: "99999",
+    unit: "อบฟ.",
+    subUnit: null,
+    type: "พนักงาน",
+    scores: [1, 1, 1, 1, 1, 1],
+    at: "2024-08-02T10:00:00.000Z",
+    _blobUrl: "mock-url-somchai2"
+  }
+];
+
+// 1. ลูกจ้างกรอก 'นส ธิฌาดา จันทร์ศิริชญา' และเปลี่ยนสังกัดเป็น 'กบห-ธ.' ต้องตรวจพบข้อมูลเดิม
+const checkContractor = await call(checkHandler, {
+  body: {
+    name: "นส ธิฌาดา จันทร์ศิริชญา",
+    empid: null,
+    unit: "กบห-ธ.",
+    subUnit: null,
+    type: "ลูกจ้าง"
+  }
+});
+assert.equal(checkContractor.code, 200, "check: ลูกจ้างชื่อตรงแม้คำนำหน้าและสังกัดต่าง ต้องพบข้อมูลเดิม");
+assert.equal(checkContractor.body.url, "mock-url-thichada-old", "check: ต้องส่ง url เดิมกลับมา");
+assert.deepEqual(checkContractor.body.scores, [3, 3, 2, 2, 1, 3], "check: ต้องส่งคะแนนเดิมกลับมา");
+
+// 2. พนักงานรหัส 12345 เปลี่ยนคำนำหน้าหรือหน่วยงาน ต้องตรวจพบข้อมูลเดิม
+const checkEmp = await call(checkHandler, {
+  body: {
+    name: "สมชาย ใจดี",
+    empid: "12345",
+    unit: "อบค.",
+    type: "พนักงาน"
+  }
+});
+assert.equal(checkEmp.code, 200, "check: พนักงานรหัสตรง ต้องพบข้อมูลเดิม");
+assert.equal(checkEmp.body.url, "mock-url-somchai");
+
+// 3. พนักงานชื่อเหมือนกัน แต่รหัสพนักงานคนละเบอร์ ต้องแยกแยะได้
+const checkEmpOther = await call(checkHandler, {
+  body: {
+    name: "สมชาย ใจดี",
+    empid: "88888", // รหัสใหม่ ยังไม่เคยทำ
+    unit: "อบค.",
+    type: "พนักงาน"
+  }
+});
+assert.equal(checkEmpOther.code, 404, "check: รหัสพนักงานใหม่ แม้ชื่อเหมือนคนเดิมต้องไม่เจอซ้ำ");
+
+// 4. ผู้ตอบใหม่ที่ไม่เคยมีในระบบ ต้อง 404
+const checkNew = await call(checkHandler, {
+  body: {
+    name: "นาย ทดสอบ ไม่เคยมี",
+    empid: "77777",
+    unit: "อบค.",
+    type: "พนักงาน"
+  }
+});
+assert.equal(checkNew.code, 404, "check: ผู้ตอบใหม่ต้อง 404");
+
+// 5. ทดสอบการบันทึกซ้ำพร้อม oldUrl ผ่าน submitHandler เพื่อยืนยันว่าข้อมูลเดิมถูกแทนที่ ไม่เกิดรายการซ้ำ
+const submitUpdateRes = await call(submit, {
+  body: {
+    name: "นส ธิฌาดา จันทร์ศิริชญา",
+    empid: null,
+    unit: "กบห-ธ.",
+    subUnit: "กองทดสอบ",
+    type: "ลูกจ้าง",
+    scores: [4, 4, 4, 4, 4, 4],
+    oldUrl: "mock-url-thichada-old"
+  }
+});
+assert.equal(submitUpdateRes.code, 201, "submit: บันทึกอัปเดตต้องได้ 201");
+const thichadaRecords = globalThis.__blobMock.filter(r => normName(r.name) === "ธิฌาดา จันทร์ศิริชญา");
+assert.equal(thichadaRecords.length, 1, "ต้องไม่มีข้อมูลซ้ำของ ธิฌาดา ใน mock");
+assert.deepEqual(thichadaRecords[0].scores, [4, 4, 4, 4, 4, 4], "คะแนนต้องได้รับการอัปเดต");
+assert.equal(thichadaRecords[0].unit, "กบห-ธ.", "สังกัดต้องได้รับการอัปเดต");
+
+delete globalThis.__blobMock;
+
+console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel, update, headcount และ duplicate check");

@@ -500,22 +500,22 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
 
   <!-- modal ยืนยันแก้ไขข้อมูลซ้ำ -->
   <div id="confirmModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;padding:16px">
-    <div class="card" style="max-width:480px;width:100%;margin:0">
-      <h3 style="margin:0 0 8px;color:var(--blue)">พบข้อมูลเดิมในระบบ</h3>
-      <p class="muted" style="margin:0 0 12px;font-size:.9em">ต้องการแก้ไขคำตอบหรือไม่? ข้อมูลเดิมจะถูกแทนที่</p>
+    <div class="card" style="max-width:500px;width:100%;margin:0;max-height:90vh;overflow-y:auto">
+      <h3 style="margin:0 0 8px;color:var(--blue)">⚠️ พบข้อมูลการประเมินเดิมในระบบ</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.9em">คุณเคยทำแบบประเมินนี้แล้ว ต้องการแก้ไขผลการประเมินหรือไม่?<br><span style="color:#b45309">หากต้องการแก้ไข ระบบจะดึงคำตอบเดิมมาให้ในหน้าถัดไปเพื่อให้ปรับปรุงได้สะดวก</span></p>
       <div style="overflow-x:auto">
         <table id="diffTable" style="width:100%;border-collapse:collapse;font-size:.85em">
           <thead><tr style="background:var(--blue);color:#fff">
-            <th style="padding:6px 8px;text-align:left">ข้อมูล</th>
-            <th style="padding:6px 8px;text-align:left">เดิม</th>
-            <th style="padding:6px 8px;text-align:left">ใหม่</th>
+            <th style="padding:6px 8px;text-align:left">รายการ</th>
+            <th style="padding:6px 8px;text-align:left">เดิมในระบบ</th>
+            <th style="padding:6px 8px;text-align:left">ข้อมูลที่ระบุ</th>
           </tr></thead>
           <tbody id="diffBody"></tbody>
         </table>
       </div>
       <div class="bar" style="margin-top:16px">
-        <button class="ghost" type="button" onclick="closeConfirm()">ยกเลิก</button>
-        <button class="primary" type="button" id="confirmBtn">ยืนยันแก้ไข</button>
+        <button class="ghost" type="button" onclick="closeConfirm()">ยกเลิก / แก้ไขข้อมูล</button>
+        <button class="primary" type="button" id="confirmBtn">แก้ไข / ทำแบบประเมินต่อ →</button>
       </div>
     </div>
   </div>
@@ -870,7 +870,11 @@ $("#subUnits").onchange = e => {
 };
 
 // ---- หน้า 2: สร้างจาก MATRIX
-$("#p2").innerHTML = MATRIX.map(([title, levels], i) => {
+$("#p2").innerHTML = `
+  <div id="editNotice" class="card hidden" style="background:#e0f2fe;border-left:4px solid var(--blue);color:#0369a1;padding:12px 16px;margin-bottom:12px;font-size:0.95em">
+    <strong>ℹ️ โหมดแก้ไขข้อมูล:</strong> ระบบได้เลือกคำตอบเดิมที่คุณเคยทำไว้ให้แล้ว คุณสามารถตรวจสอบหรือเปลี่ยนแปลงคำตอบตามต้องการ แล้วกด "ส่งคำตอบ" ด้านล่างได้เลยครับ
+  </div>
+` + MATRIX.map(([title, levels], i) => {
   const images = QIMG[i+1] ?? [];
   const link = QLINK[i+1];
   const hasMedia = images.length > 0 || !!link;
@@ -917,10 +921,19 @@ document.querySelectorAll("input[name=emptype]").forEach(r => r.addEventListener
   if (!isEmp) $("#empidInput").value = "";
 }));
 
-const normName = s => s.trim().replace(/^(นาย|นางสาว|นาง)\s*/, "").trim();
+const normName = s => {
+  if (!s || typeof s !== "string") return "";
+  return s
+    .trim()
+    .replace(/^(?:นาย|นางสาว|นาง|น\s*\.\s*ส\s*\.?|นส\.|นส\s+|ด\s*\.\s*[ชญ]\s*\.?|ด[ชญ]\.|ด[ชญ]\s+)\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 let draft = {};
-$("#p1").onsubmit = e => {
+let pendingExisting = null;
+
+$("#p1").onsubmit = async e => {
   e.preventDefault();
   if (!valid(e.target)) return;
   const f = new FormData(e.target);
@@ -930,13 +943,73 @@ $("#p1").onsubmit = e => {
   if (unit !== "อื่นๆ" && subUnitVal) {
     subUnit = subUnitVal === "อื่นๆ" ? `อื่นๆ: ${$("#subUnitOther").value.trim()}` : subUnitVal;
   }
+  const emptype = f.get("emptype");
   draft = {
     name: f.get("name").trim(),
-    empid: f.get("empid")?.trim() || null,
+    empid: emptype === "พนักงาน" ? f.get("empid")?.trim() || null : null,
     unit: unit === "อื่นๆ" ? `อื่นๆ: ${$("#unitOther").value.trim()}` : unit,
     subUnit: subUnit,
-    type: f.get("emptype"),
+    type: emptype,
   };
+
+  // เช็คข้อมูลซ้ำทันทีตั้งแต่หน้าลงทะเบียน
+  const btn = e.target.querySelector(".primary");
+  btn.disabled = true;
+  const origBtnText = btn.textContent;
+  btn.textContent = "กำลังตรวจสอบ...";
+
+  let existing = null;
+  try {
+    const cr = await fetch("/api/check", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({
+        name: draft.name,
+        empid: draft.empid,
+        unit: draft.unit,
+        subUnit: draft.subUnit,
+        type: draft.type
+      }),
+    });
+    if (cr.ok) existing = await cr.json();
+  } catch { /* network error — ปล่อยผ่านให้ทำแบบสอบถามได้ */ }
+
+  btn.disabled = false;
+  btn.textContent = origBtnText;
+
+  if (existing) {
+    pendingExisting = existing;
+    const dateStr = existing.at ? new Date(existing.at).toLocaleString("th-TH", {
+      dateStyle: "medium", timeStyle: "short"
+    }) : "-";
+    const rows = [
+      ["ชื่อ - สกุล", existing.name ?? "-", draft.name],
+      ...(draft.type || existing.type ? [["ประเภท", existing.type ?? "-", draft.type ?? "-"]] : []),
+      ...(draft.empid || existing.empid ? [["รหัสพนักงาน", existing.empid ?? "-", draft.empid ?? "-"]] : []),
+      ["สังกัด (ฝ่าย)", existing.unit ?? "-", draft.unit],
+      ...(draft.subUnit || existing.subUnit ? [["สังกัด (กอง)", existing.subUnit ?? "-", draft.subUnit ?? "-"]] : []),
+      ["วันที่ประเมินเดิม", dateStr, "จะอัปเดตเป็นวันนี้"],
+    ];
+    if (Array.isArray(existing.scores) && existing.scores.length === 6) {
+      const avg = (existing.scores.reduce((a, b) => a + b, 0) / 6).toFixed(2);
+      rows.push(["ระดับเฉลี่ยเดิม", `${avg} / 4.00`, "ระบบจะโหลดให้แก้ไข"]);
+    }
+    $("#diffBody").innerHTML = rows.map(([label, old, nw]) => {
+      const diff = String(old) !== String(nw) && nw !== "จะอัปเดตเป็นวันนี้" && nw !== "ระบบจะโหลดให้แก้ไข";
+      return `<tr style="${diff ? "background:#fff8e1" : ""}">
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-weight:600">${label}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;color:${diff ? "#c62828" : "inherit"}">${old}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;color:${diff ? "#2e7d32" : "inherit"}">${nw}</td>
+      </tr>`;
+    }).join("");
+    $("#confirmModal").classList.remove("hidden");
+    return;
+  }
+
+  // ผู้ประเมินใหม่: ล้างคำตอบในหน้า 2 และซ่อนข้อความเตือน
+  document.querySelectorAll('#p2 input[type="radio"]').forEach(r => r.checked = false);
+  delete draft.oldUrl;
+  $("#editNotice")?.classList.add("hidden");
   go(2);
 };
 
@@ -949,7 +1022,7 @@ async function doSubmit(scores) {
     const r = await fetch("/api/submit", {
       method: "POST",
       headers: {"content-type": "application/json"},
-      body: JSON.stringify({...draft, scores}),
+      body: JSON.stringify({...draft, scores, oldUrl: draft.oldUrl}),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "ส่งไม่สำเร็จ");
   } catch (err) {
@@ -961,22 +1034,31 @@ async function doSubmit(scores) {
   return true;
 }
 
-let pendingScores = null;
 function closeConfirm() {
   $("#confirmModal").classList.add("hidden");
-  pendingScores = null;
-  const btn = $("#p2").querySelector(".primary");
-  btn.disabled = false; btn.textContent = "ส่งคำตอบ";
+  pendingExisting = null;
+  const btn = $("#p1").querySelector(".primary");
+  if (btn) { btn.disabled = false; btn.textContent = "ถัดไป"; }
 }
 
-$("#confirmBtn").onclick = async () => {
+$("#confirmBtn").onclick = () => {
   $("#confirmModal").classList.add("hidden");
-  if (await doSubmit(pendingScores)) {
-    $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
-      MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${pendingScores[i]}</td></tr>`).join("") + `</table>`;
-    pendingScores = null;
-    go(3);
+  if (!pendingExisting) return;
+
+  // นำคำตอบเดิมมาเลือกไว้ในหน้า 2
+  if (Array.isArray(pendingExisting.scores)) {
+    pendingExisting.scores.forEach((sc, i) => {
+      const radio = document.querySelector(`input[name="q${i}"][value="${sc}"]`);
+      if (radio) radio.checked = true;
+    });
   }
+
+  // ส่ง oldUrl เพื่อให้ backend ลบ/แทนที่ blob เดิม ป้องกันข้อมูลซ้ำ
+  draft.oldUrl = pendingExisting.url || pendingExisting._blobUrl;
+
+  $("#editNotice")?.classList.remove("hidden");
+  pendingExisting = null;
+  go(2);
 };
 
 $("#p2").onsubmit = async e => {
@@ -985,45 +1067,10 @@ $("#p2").onsubmit = async e => {
   const f = new FormData(e.target);
   const scores = MATRIX.map((_, i) => +f.get("q" + i));
 
-  // เช็คข้อมูลซ้ำก่อนส่ง
-  const btn = e.target.querySelector(".primary");
-  btn.disabled = true; btn.textContent = "กำลังตรวจสอบ...";
-  let existing = null;
-  try {
-    const cr = await fetch("/api/check", {
-      method: "POST",
-      headers: {"content-type": "application/json"},
-      body: JSON.stringify({name: draft.name, empid: draft.empid, unit: draft.unit, subUnit: draft.subUnit, type: draft.type}),
-    });
-    if (cr.ok) existing = await cr.json();
-  } catch { /* network error — ปล่อยผ่าน ส่งตรงได้เลย */ }
-
-  if (existing) {
-    // แสดง diff modal
-    pendingScores = scores;
-    const rows = [
-      ["ชื่อ - สกุล", existing.name ?? "-", draft.name],
-      ...(draft.empid || existing.empid ? [["รหัสพนักงาน", existing.empid ?? "-", draft.empid ?? "-"]] : []),
-      ["สังกัด (ฝ่าย)", existing.unit ?? "-", draft.unit],
-      ...(draft.subUnit || existing.subUnit ? [["สังกัด (กอง)", existing.subUnit ?? "-", draft.subUnit ?? "-"]] : []),
-      ...MATRIX.map(([t], i) => [t, existing.scores?.[i] ?? "-", scores[i]]),
-    ];
-    $("#diffBody").innerHTML = rows.map(([label, old, nw]) => {
-      const diff = String(old) !== String(nw);
-      return `<tr style="${diff ? "background:#fff8e1" : ""}">
-        <td style="padding:5px 8px;border-bottom:1px solid #eee">${label}</td>
-        <td style="padding:5px 8px;border-bottom:1px solid #eee;color:${diff?"#c62828":"inherit"}">${old}</td>
-        <td style="padding:5px 8px;border-bottom:1px solid #eee;color:${diff?"#2e7d32":"inherit"}">${nw}</td>
-      </tr>`;
-    }).join("");
-    $("#confirmModal").classList.remove("hidden");
-    return; // รอ user ยืนยัน
-  }
-
-  btn.disabled = false; btn.textContent = "ส่งคำตอบ";
   if (await doSubmit(scores)) {
     $("#score").innerHTML = `<table><tr><th>หัวข้อ</th><th>ระดับ</th></tr>` +
       MATRIX.map(([t],i)=>`<tr><td>${t}</td><td>${scores[i]}</td></tr>`).join("") + `</table>`;
+    $("#editNotice")?.classList.add("hidden");
     go(3);
   }
 };

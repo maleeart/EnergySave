@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
 
   // trust boundary: endpoint นี้เปิดสาธารณะ ต้องตรวจรูปร่างข้อมูลทุกฟิลด์
-  const { name, empid, unit, subUnit, scores } = req.body ?? {};
+  const { name, empid, unit, subUnit, scores, oldUrl } = req.body ?? {};
   const type = req.body?.type ?? "พนักงาน";
   if (!str(name, 100) || !str(unit, 120))
     return res.status(400).json({ error: "ข้อมูลผู้ตอบไม่ถูกต้อง" });
@@ -20,10 +20,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "ข้อมูลสังกัดกองไม่ถูกต้อง" });
 
   const cleanSubUnit = str(subUnit, 120) ? subUnit.trim() : null;
+  const validOldUrl = (typeof oldUrl === "string" && (oldUrl.startsWith("https://") || oldUrl.startsWith("mock-url-"))) ? oldUrl : null;
 
   try {
-    await append({ name: name.trim(), empid: empid?.trim() || null, unit: unit.trim(), subUnit: cleanSubUnit, type: type ?? "พนักงาน", scores,
-      at: new Date().toISOString() });
+    await append({
+      name: name.trim(),
+      empid: type === "พนักงาน" ? (empid?.trim() || null) : null,
+      unit: unit.trim(),
+      subUnit: cleanSubUnit,
+      type: type ?? "พนักงาน",
+      scores,
+      at: new Date().toISOString(),
+      ...(validOldUrl ? { oldUrl: validOldUrl } : {})
+    });
   } catch (err) {
     console.error("[submit] blob error:", err);
     return res.status(500).json({ error: err.message || "blob write failed" });

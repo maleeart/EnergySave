@@ -2,33 +2,60 @@ import { put, list } from "@vercel/blob";
 
 const PREFIX = "energysave/responses/";
 
+export const normName = s => {
+  if (!s || typeof s !== "string") return "";
+  return s
+    .trim()
+    .replace(/^(?:นาย|นางสาว|นาง|น\s*\.\s*ส\s*\.?|นส\.|นส\s+|ด\s*\.\s*[ชญ]\s*\.?|ด[ชญ]\.|ด[ชญ]\s+)\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 export async function append(data) {
   if (globalThis.__blobMock) {
     let idx = -1;
     if (data._blobUrl) {
       idx = globalThis.__blobMock.findIndex(r => r._blobUrl === data._blobUrl);
     }
+    if (idx === -1 && data.oldUrl) {
+      idx = globalThis.__blobMock.findIndex(r => r._blobUrl === data.oldUrl);
+    }
     if (idx === -1 && data.empid) {
-      idx = globalThis.__blobMock.findIndex(r => r.empid === data.empid && r.empid !== null);
+      idx = globalThis.__blobMock.findIndex(r => r.empid && String(r.empid).trim() === String(data.empid).trim());
     }
+    if (idx === -1 && data.name) {
+      idx = globalThis.__blobMock.findIndex(r => normName(r.name) === normName(data.name));
+    }
+    const { oldUrl, ...saveData } = data;
     if (idx >= 0) {
-      globalThis.__blobMock[idx] = data;
+      const existingUrl = globalThis.__blobMock[idx]._blobUrl;
+      globalThis.__blobMock[idx] = { ...saveData, _blobUrl: existingUrl };
+      return { url: existingUrl };
     } else {
-      globalThis.__blobMock.push(data);
+      const mockUrl = data._blobUrl || `mock-url-${Math.random()}`;
+      globalThis.__blobMock.push({ ...saveData, _blobUrl: mockUrl });
+      return { url: mockUrl };
     }
-    return { url: data._blobUrl || `mock-url-${Math.random()}` };
   }
-  // พนักงาน: key = empid, ลูกจ้าง: key = ชื่อ+ฝ่าย
-  const normName = s => s.trim().replace(/^(นาย|นางสาว|นาง)\s*/, "").trim();
+  // พนักงาน: key = empid, ลูกจ้าง: key = ชื่อ (ไม่รวมฝ่าย เพื่อป้องกันไฟล์ซ้ำกรณีเปลี่ยนสังกัด)
   const safeStr = s => s.replace(/\s+/g, "_").replace(/[^\w฀-๿]/g, "").slice(0, 40);
   const key = data.empid
     ? `emp-${String(data.empid).replace(/[^a-zA-Z0-9]/g, "_")}`
-    : `contractor-${safeStr(normName(data.name))}-${safeStr(data.unit)}`;
-  return await put(`${PREFIX}${key}.json`, JSON.stringify(data), {
+    : `contractor-${safeStr(normName(data.name))}`;
+  const { oldUrl, ...saveData } = data;
+  const res = await put(`${PREFIX}${key}.json`, JSON.stringify(saveData), {
     access: "public",
     addRandomSuffix: false,
     allowOverwrite: true,
   });
+  if (oldUrl && oldUrl !== res.url) {
+    try {
+      await remove(oldUrl);
+    } catch (err) {
+      console.warn("[append] failed to remove old blob:", err.message);
+    }
+  }
+  return res;
 }
 
 export async function readAll() {
