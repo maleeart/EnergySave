@@ -5,11 +5,19 @@ const PREFIX = "energysave/responses/";
 export const normName = s => {
   if (!s || typeof s !== "string") return "";
   return s
+    .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, "") // ตัด zero-width space และ invisible chars
+    .replace(/\u00A0/g, " ") // non-breaking space
     .trim()
     .replace(/^(?:นาย|นางสาว|นาง|น\s*\.\s*ส\s*\.?|นส\.|นส\s+|ด\s*\.\s*[ชญ]\s*\.?|ด[ชญ]\.|ด[ชญ]\s+)\s*/i, "")
     .replace(/\s+/g, " ")
     .trim();
 };
+
+export const safeStr = s => (s || "")
+  .replace(/[\u200B-\u200D\uFEFF]/g, "")
+  .replace(/\s+/g, "_")
+  .replace(/[^\w฀-๿]/g, "")
+  .slice(0, 40);
 
 export async function append(data) {
   if (globalThis.__blobMock) {
@@ -38,7 +46,6 @@ export async function append(data) {
     }
   }
   // พนักงาน: key = empid, ลูกจ้าง: key = ชื่อ (ไม่รวมฝ่าย เพื่อป้องกันไฟล์ซ้ำกรณีเปลี่ยนสังกัด)
-  const safeStr = s => s.replace(/\s+/g, "_").replace(/[^\w฀-๿]/g, "").slice(0, 40);
   const key = data.empid
     ? `emp-${String(data.empid).replace(/[^a-zA-Z0-9]/g, "_")}`
     : `contractor-${safeStr(normName(data.name))}`;
@@ -58,14 +65,92 @@ export async function append(data) {
   return res;
 }
 
+export async function findRecord({ name, empid, type }) {
+  if (globalThis.__blobMock) {
+    const norm = normName(name || "");
+    const rows = globalThis.__blobMock.slice().reverse();
+    return rows.find(r => {
+      if (empid && r.empid) {
+        return String(r.empid).trim().toLowerCase() === String(empid).trim().toLowerCase();
+      }
+      if (r.name && normName(r.name) === norm) {
+        if (empid && r.empid && String(r.empid).trim().toLowerCase() !== String(empid).trim().toLowerCase()) {
+          return false;
+        }
+        return true;
+      }
+      return false;
+    }) ?? null;
+  }
+
+  const norm = normName(name || "");
+  const cleanEmpid = empid ? String(empid).trim().replace(/[^a-zA-Z0-9]/g, "_") : null;
+  const safeName = safeStr(norm);
+
+  const { blobs } = await list({ prefix: PREFIX });
+  if (!blobs || !blobs.length) return null;
+
+  // 1. ค้นหา Candidate จากชื่อไฟล์ blob (รวดเร็วมาก ใช้เวลาไม่กี่มิลลิวินาที ไม่ต้องดาวน์โหลดทุกไฟล์)
+  const candidates = blobs.filter(b => {
+    const p = decodeURIComponent(b.pathname);
+    if (cleanEmpid && p.includes(`emp-${cleanEmpid}`)) return true;
+    if (safeName && p.includes(safeName)) return true;
+    if (name && p.includes(safeStr(name))) return true;
+    return false;
+  });
+
+  // เรียงจากล่าสุดไปเก่าสุดตาม uploadedAt
+  candidates.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+  for (const b of candidates) {
+    try {
+      const data = await fetch(b.url).then(r => r.json());
+      const record = { ...data, _blobUrl: b.url };
+      if (empid && record.empid) {
+        if (String(record.empid).trim().toLowerCase() === String(empid).trim().toLowerCase()) {
+          return record;
+        }
+      }
+      if (record.name && normName(record.name) === norm) {
+        if (empid && record.empid && String(record.empid).trim().toLowerCase() !== String(empid).trim().toLowerCase()) {
+          continue;
+        }
+        return record;
+      }
+    } catch (err) {
+      console.warn("[findRecord] candidate read error:", b.url, err.message);
+    }
+  }
+
+  // 2. ถ้า candidates ไม่พบ (กรณีชื่อไฟล์เดิมไม่ตรงกับ pattern) ให้ fallback ค้นหาจากเนื้อหาทั้งหมด
+  const allRows = await readAll();
+  return allRows.slice().reverse().find(r => {
+    if (empid && r.empid) {
+      return String(r.empid).trim().toLowerCase() === String(empid).trim().toLowerCase();
+    }
+    if (r.name && normName(r.name) === norm) {
+      if (empid && r.empid && String(r.empid).trim().toLowerCase() !== String(empid).trim().toLowerCase()) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }) ?? null;
+}
+
 export async function readAll() {
   if (globalThis.__blobMock) return [...globalThis.__blobMock].map((r, i) => ({ ...r, _blobUrl: r._blobUrl || `mock-url-${i}` }));
   const { blobs } = await list({ prefix: PREFIX });
   if (!blobs.length) return [];
-  const rows = await Promise.all(blobs.map(async b => {
-    const data = await fetch(b.url).then(r => r.json());
-    return { ...data, _blobUrl: b.url }; // URL ใช้สำหรับลบ — ไม่ถูก save ลงใน blob
-  }));
+  const rows = (await Promise.all(blobs.map(async b => {
+    try {
+      const data = await fetch(b.url).then(r => r.json());
+      return { ...data, _blobUrl: b.url };
+    } catch (err) {
+      console.warn("[readAll] failed to parse blob:", b.url, err.message);
+      return null;
+    }
+  }))).filter(Boolean);
   return rows.sort((a, b) => new Date(a.at) - new Date(b.at));
 }
 

@@ -396,6 +396,20 @@ assert.equal(thichadaRecords.length, 1, "ต้องไม่มีข้อม
 assert.deepEqual(thichadaRecords[0].scores, [4, 4, 4, 4, 4, 4], "คะแนนต้องได้รับการอัปเดต");
 assert.equal(thichadaRecords[0].unit, "กบห-ธ.", "สังกัดต้องได้รับการอัปเดต");
 
+// 6. ทดสอบอักขระล่องหน (zero-width chars) และ non-breaking space
+assert.equal(normName("นส\u200B ธิฌาดา\u200B จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา", "ต้องตัด zero-width space ได้");
+assert.equal(normName("นส\u00A0ธิฌาดา\u00A0จันทร์ศิริชญา"), "ธิฌาดา จันทร์ศิริชญา", "ต้องแปลง non-breaking space ได้");
+
+// 7. ตรวจสอบว่า checkHandler ทำงานได้แม้ไม่ส่ง unit มา
+const checkNoUnit = await call(checkHandler, {
+  body: {
+    name: "นส\u200B ธิฌาดา จันทร์ศิริชญา",
+    type: "ลูกจ้าง"
+  }
+});
+assert.equal(checkNoUnit.code, 200, "check: ไม่ส่ง unit หรือมี zero-width space ก็ต้องตรวจพบข้อมูลเดิม");
+assert.equal(checkNoUnit.body.url, "mock-url-thichada-old");
+
 delete globalThis.__blobMock;
 
 console.log("✓ ผ่านทั้งหมด — validation, รหัสผ่าน, กราฟ EMM, ความครอบคลุม, export Excel, update, headcount และ duplicate check");

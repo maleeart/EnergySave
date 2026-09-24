@@ -15,6 +15,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="EMM กฟผ.">
 <meta name="theme-color" content="#1B4C9E">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <!-- Lucide Icons for premium feel -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -924,6 +927,8 @@ document.querySelectorAll("input[name=emptype]").forEach(r => r.addEventListener
 const normName = s => {
   if (!s || typeof s !== "string") return "";
   return s
+    .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, "")
+    .replace(/\u00A0/g, " ")
     .trim()
     .replace(/^(?:นาย|นางสาว|นาง|น\s*\.\s*ส\s*\.?|นส\.|นส\s+|ด\s*\.\s*[ชญ]\s*\.?|ด[ชญ]\.|ด[ชญ]\s+)\s*/i, "")
     .replace(/\s+/g, " ")
@@ -959,6 +964,7 @@ $("#p1").onsubmit = async e => {
   btn.textContent = "กำลังตรวจสอบ...";
 
   let existing = null;
+  let checkError = null;
   try {
     const cr = await fetch("/api/check", {
       method: "POST",
@@ -971,11 +977,26 @@ $("#p1").onsubmit = async e => {
         type: draft.type
       }),
     });
-    if (cr.ok) existing = await cr.json();
-  } catch { /* network error — ปล่อยผ่านให้ทำแบบสอบถามได้ */ }
+    if (cr.ok) {
+      existing = await cr.json();
+    } else if (cr.status === 404) {
+      existing = null; // ผู้ตอบใหม่ ไม่เคยมีข้อมูล
+    } else {
+      checkError = `HTTP ${cr.status}`;
+      console.warn("[check] server status:", cr.status);
+    }
+  } catch (err) {
+    checkError = err.message || "network error";
+    console.warn("[check] network error:", err);
+  }
 
   btn.disabled = false;
   btn.textContent = origBtnText;
+
+  if (checkError) {
+    const proceed = confirm(`ระบบไม่สามารถเชื่อมต่อฐานข้อมูลเพื่อตรวจสอบข้อมูลเดิมได้ (${checkError})\n\nต้องการทำแบบประเมินต่อหรือไม่? (กด 'ยกเลิก' เพื่อลองใหม่อีกครั้ง)`);
+    if (!proceed) return;
+  }
 
   if (existing) {
     pendingExisting = existing;
