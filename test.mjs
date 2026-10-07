@@ -170,6 +170,37 @@ assert.equal(s2.getRow(13).getCell(3).value, 3, "ภาพรวมต้อง�
 
 assert.equal(xres.h["content-type"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "MIME ต้องเป็น xlsx จริง");
+
+// --- export Excel สรุปความก้าวหน้ารายฝ่าย-กอง (type=summary) เฉพาะจำนวนบุคลากร ---
+const summaryChunks = [];
+const sxres = {
+  setHeader(k, v){ (this.h ??= {})[k] = v; },
+  status(c){ this.code = c; return this; },
+  json(b){ this.body = b; return this; },
+  send(buf){ summaryChunks.push(buf); },
+};
+await exportHandler({headers: {"x-admin-password": "M@lee8888"}, query: { type: "summary" }}, sxres);
+assert.ok(summaryChunks[0]?.length > 0, "ต้องได้ไฟล์ summary xlsx ออกมา");
+const wbSummary = new ExcelJS.Workbook();
+await wbSummary.xlsx.load(summaryChunks[0]);
+
+const wsProg = wbSummary.getWorksheet("สรุปความก้าวหน้ารายฝ่าย-กอง");
+assert.ok(wsProg, "ต้องมีชีตสรุปความก้าวหน้ารายฝ่าย-กอง");
+assert.equal(wsProg.columnCount, 8, "ต้องมี 8 คอลัมน์ (ไม่มีคอลัมน์คะแนน EMM)");
+assert.equal(wsProg.getRow(7).getCell(1).value, "ลำดับ");
+assert.equal(wsProg.getRow(7).getCell(4).value, "กำลังพลเป้าหมาย (คน)");
+assert.equal(wsProg.getRow(7).getCell(5).value, "ประเมินแล้ว (คน)");
+assert.equal(wsProg.getRow(7).getCell(6).value, "ยังไม่ทำ / คงเหลือ (คน)");
+assert.equal(wsProg.getRow(7).getCell(7).value, "ความคืบหน้า (%)");
+assert.equal(wsProg.getRow(7).getCell(8).value, "สถานะการติดตาม");
+
+// ตรวจสอบแถวสรุปภาพรวมทั้งหมดที่ล่างสุด
+const lastSummaryRow = wsProg.lastRow;
+assert.equal(lastSummaryRow.getCell(1).value, "รวม");
+assert.equal(lastSummaryRow.getCell(2).value, "ภาพรวมทั้งหมด");
+assert.equal(lastSummaryRow.getCell(4).value, 1990, "กำลังพลรวมต้องเป็น 1990");
+assert.equal(lastSummaryRow.getCell(5).value, 2, "ผู้เข้าร่วมประเมินรวมต้องเป็น 2");
+assert.equal(lastSummaryRow.getCell(6).value, 1988, "ยังไม่ทำต้องเป็น 1990 - 2 = 1988");
 // --- update: ต้องแอนมินเท่านั้น และข้อมูลต้องถูกต้อง ---
 const updateHandler = (await import("./api/update.js")).default;
 const mockPerson = {

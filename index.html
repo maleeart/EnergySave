@@ -543,7 +543,8 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
     <div class="admin-toolbar">
       <div class="bar admin-btn-group" style="justify-content:flex-start;flex-wrap:wrap">
-        <button class="primary" id="xlsx">export Excel</button>
+        <button class="primary" id="summaryXlsx" style="background:#059669;border-color:#059669">📊 Export สรุปรายฝ่าย/กอง (Excel)</button>
+        <button class="ghost" id="xlsx">📥 ผลประเมินรายบุคคล (Excel)</button>
         <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
         <button class="ghost" id="headcountBtn">👥 ตั้งค่ากำลังพล</button>
         <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
@@ -1312,6 +1313,7 @@ function render(){
     const dRows = isOther ? otherRows : rows.filter(r => r.unit === dept);
     const dPeople = new Set(dRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
     const targetHc = isOther ? 0 : (HEADCOUNT[dept] ?? 0);
+    const dRemaining = targetHc > 0 ? Math.max(0, targetHc - dPeople) : 0;
     const dPct = targetHc > 0 ? (dPeople / targetHc * 100) : null;
     const dAvgs = avgOf(dRows);
     const dOverall = dRows.length ? dAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
@@ -1325,6 +1327,7 @@ function render(){
       </td>
       <td><strong>${dPeople} คน</strong></td>
       <td><strong>${targetHc ? targetHc + ' คน' : '<span class="muted">—</span>'}</strong></td>
+      <td><strong>${targetHc ? `<span style="color:${dRemaining === 0 ? '#10b981' : '#e11d48'}">${dRemaining} คน</span>` : '<span class="muted">—</span>'}</strong></td>
       <td><strong>${dPct !== null ? `<span style="color:${dPct >= 100 ? '#10b981' : 'var(--blue)'}">${dPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</strong></td>
       ${dAvgs.map(v => `<td><strong>${dRows.length ? v.toFixed(2) : '—'}</strong></td>`).join('')}
       <td><strong>${dRows.length ? dOverall.toFixed(2) : '—'}</strong></td>
@@ -1340,6 +1343,7 @@ function render(){
       const divRows = dRows.filter(r => r.subUnit === divName);
       const divPeople = new Set(divRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
       const divTargetHc = dDivs[divName] ?? 0;
+      const divRemaining = divTargetHc > 0 ? Math.max(0, divTargetHc - divPeople) : 0;
       const divPct = divTargetHc > 0 ? (divPeople / divTargetHc * 100) : null;
       const divAvgs = avgOf(divRows);
       const divOverall = divRows.length ? divAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
@@ -1349,6 +1353,7 @@ function render(){
         <td style="padding-left:26px;color:var(--muted)">↳ ${divName}</td>
         <td>${divPeople} คน</td>
         <td>${divTargetHc ? divTargetHc + ' คน' : '<span class="muted">—</span>'}</td>
+        <td>${divTargetHc ? `<span style="color:${divRemaining === 0 ? '#10b981' : '#e11d48'}">${divRemaining} คน</span>` : '<span class="muted">—</span>'}</td>
         <td>${divPct !== null ? `<span style="color:${divPct >= 100 ? '#10b981' : 'var(--blue)'};font-weight:600">${divPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</td>
         ${divAvgs.map(v => `<td>${divRows.length ? v.toFixed(2) : '—'}</td>`).join('')}
         <td>${divRows.length ? divOverall.toFixed(2) : '—'}</td>
@@ -1361,6 +1366,7 @@ function render(){
 
   const overallHc = TOTAL_HEADCOUNT;
   const overallPeople = new Set(rows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+  const overallRemaining = overallHc > 0 ? Math.max(0, overallHc - overallPeople) : 0;
   const overallPct = overallHc > 0 ? (overallPeople / overallHc * 100) : null;
   const allDeptsAvgs = avgOf(rows);
   const allDeptsOverall = rows.length ? allDeptsAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
@@ -1369,6 +1375,7 @@ function render(){
     <td>รวมทั้งหมด (กฟผ. ไทรน้อย)</td>
     <td>${overallPeople} คน</td>
     <td>${overallHc} คน</td>
+    <td>${overallHc ? `<span style="color:${overallRemaining === 0 ? '#10b981' : '#e11d48'}">${overallRemaining} คน</span>` : '<span class="muted">—</span>'}</td>
     <td>${overallPct !== null ? `${overallPct.toFixed(1)}%` : '—'}</td>
     ${allDeptsAvgs.map(v => `<td>${rows.length ? v.toFixed(2) : '—'}</td>`).join('')}
     <td>${rows.length ? allDeptsOverall.toFixed(2) : '—'}</td>
@@ -1381,6 +1388,7 @@ function render(){
         <th>สังกัด (ฝ่าย / กอง)</th>
         <th>ประเมินแล้ว</th>
         <th>กำลังพล</th>
+        <th>ยังไม่ทำ (คน)</th>
         <th>ร้อยละ</th>
         ${SHORT.map(s => `<th>${s}</th>`).join('')}
         <th>รวมเฉลี่ย</th>
@@ -1413,6 +1421,22 @@ function render(){
     }).join("");
 }
 
+$("#summaryXlsx").onclick = async e => {
+  const btn = e.target;
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์สรุป...";
+  try {
+    const r = await fetch("/api/export?type=summary", {headers: authHdr(adminPw)});
+    if (!r.ok) throw new Error(await errMsg(r));
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(await r.blob()),
+      download: `สรุปความก้าวหน้ารายฝ่าย-กอง-${new Date().toISOString().slice(0,10)}.xlsx`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  } catch (err) { alert("export สรุปไม่สำเร็จ: " + err.message); }
+  btn.disabled = false; btn.textContent = origText;
+};
+
 $("#csv").onclick = () => {
   const esc = v => `"${String(v).replace(/"/g,'""')}"`;
   const head = ["วันที่","ชื่อ - สกุล","รหัสพนักงาน","ฝ่าย","กอง", ...MATRIX.map((m,i)=>`${i+1}. ${m[0]}`)];
@@ -1425,6 +1449,7 @@ $("#csv").onclick = () => {
 
 $("#xlsx").onclick = async e => {
   const btn = e.target;
+  const origText = btn.textContent;
   btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์...";
   try {
     const p = new URLSearchParams();
@@ -1439,7 +1464,7 @@ $("#xlsx").onclick = async e => {
     });
     a.click(); URL.revokeObjectURL(a.href);
   } catch (err) { alert("export ไม่สำเร็จ: " + err.message); }
-  btn.disabled = false; btn.textContent = "export Excel";
+  btn.disabled = false; btn.textContent = origText;
 };
 
 $("#refresh").onclick = async () => {
