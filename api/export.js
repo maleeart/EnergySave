@@ -41,7 +41,7 @@ async function handleSummaryExport(all, hcData, res) {
   const overallPct = totalHc > 0 ? +(totalPeople / totalHc * 100).toFixed(1) : 0;
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "แบบประเมินสถานภาพการจัดการพลังงาน กฟผ.";
+  wb.creator = "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น กฟผ.";
 
   const ws = wb.addWorksheet("สรุปความก้าวหน้ารายฝ่าย-กอง", {
     views: [{ state: "frozen", ySplit: 4 }],
@@ -58,7 +58,7 @@ async function handleSummaryExport(all, hcData, res) {
   ];
 
   // 1. หัวรายงาน
-  const titleRow = ws.addRow(["รายงานสรุปผลการเข้าร่วมแบบประเมินพฤติกรรมการอนุรักษ์พลังงาน กฟผ. ไทรน้อย"]);
+  const titleRow = ws.addRow(["แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น"]);
   ws.mergeCells(`A${titleRow.number}:F${titleRow.number}`);
   titleRow.font = { ...FONT, size: 16, bold: true, color: { argb: "FFFFFFFF" } };
   titleRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
   const pct = currentHeadcount ? +(participated / currentHeadcount * 100).toFixed(1) : null;
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "แบบประเมินสถานภาพการจัดการพลังงาน กฟผ.";
+  wb.creator = "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น กฟผ.";
 
   // --- ชีต 1: คำตอบรายบุคคล ---
   const ws = wb.addWorksheet("ผลประเมินรายบุคคล", {

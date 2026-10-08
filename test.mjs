@@ -186,6 +186,7 @@ await wbSummary.xlsx.load(summaryChunks[0]);
 
 const wsProg = wbSummary.getWorksheet("สรุปความก้าวหน้ารายฝ่าย-กอง");
 assert.ok(wsProg, "ต้องมีชีตสรุปความก้าวหน้ารายฝ่าย-กอง");
+assert.equal(wsProg.getRow(1).getCell(1).value, "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น", "หัวรายงาน Excel สรุปต้องเป็น แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น");
 assert.equal(wsProg.columnCount, 6, "ต้องมี 6 คอลัมน์ (ตามแบบ EPAGO)");
 assert.equal(wsProg.getRow(3).getCell(1).value, "สังกัดฝ่าย");
 assert.equal(wsProg.getRow(3).getCell(2).value, "สังกัดกอง");
