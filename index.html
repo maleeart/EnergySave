@@ -20,6 +20,8 @@
 <meta http-equiv="Expires" content="0">
 <!-- Lucide Icons for premium feel -->
 <script src="https://unpkg.com/lucide@latest"></script>
+<!-- html2pdf.js for Client-Side PDF Export (Local with CDN fallback) -->
+<script src="html2pdf.bundle.min.js"></script>
 <style>
 /* ธีม กฟผ. — สีจากโลโก้ EGAT */
 :root{
@@ -406,6 +408,207 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     font-size: 12px;
   }
 }
+
+/* Modal overlay */
+.modal-overlay.hidden { display: none !important; }
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background-color: rgba(255, 255, 255, 0.96);
+  border: 1.5px solid var(--line);
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 5px 18px rgba(27,76,158,0.14);
+  z-index: 10001;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  animation: slideInUp 0.3s ease;
+}
+.toast.hidden { display: none !important; }
+.toast i { width: 1.2rem; height: 1.2rem; color: var(--blue); }
+.toast.toast-error i { color: var(--red); }
+
+@keyframes slideInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Affiliation summary expandable sub-rows (EPAGO style) */
+.btn-expand-dept {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: var(--blue);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  line-height: 1;
+}
+.btn-expand-dept:hover {
+  background: var(--blue);
+  color: #ffffff;
+  border-color: var(--blue);
+}
+.subdivision-row {
+  background-color: #f8fafc !important;
+  font-size: 0.88rem;
+}
+.subdivision-row:hover {
+  background-color: #f1f5f9 !important;
+}
+.subdivision-cell-name {
+  padding-left: 2rem !important;
+  position: relative;
+  text-align: left !important;
+}
+.subdivision-cell-name::before {
+  content: "↳";
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: bold;
+}
+
+/* Evaluation Badges */
+.badge-eval {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-eval-high {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.badge-eval-med {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.badge-eval-low {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+.badge-eval-none {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+/* Mini Progress Bar for Table */
+.table-mini-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 80px;
+}
+.table-mini-progress-pct {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  min-width: 40px;
+  text-align: right;
+}
+.table-mini-progress-track {
+  flex: 1;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.table-mini-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.table-mini-progress-fill.high { background-color: #10b981; }
+.table-mini-progress-fill.med { background-color: #f59e0b; }
+.table-mini-progress-fill.low { background-color: #ef4444; }
+.table-mini-progress-fill.none { background-color: #cbd5e1; }
+
+/* Print styles for Executive PDF */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 8mm;
+  }
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body > *:not(#admin-pdf-modal) {
+    display: none !important;
+  }
+  #admin-pdf-modal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  #admin-pdf-modal .modal-card {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+  }
+  #admin-pdf-modal-header-bar, .no-print {
+    display: none !important;
+  }
+  #pdf-preview-scroll-wrapper {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+  #pdf-report-content {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  tr, .pdf-dept-group, tbody {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  thead {
+    display: table-header-group !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -543,10 +746,12 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <h2>ผลการตอบแบบประเมิน (<span id="cnt">0</span> รายการ)</h2>
     <div class="admin-toolbar">
       <div class="bar admin-btn-group" style="justify-content:flex-start;flex-wrap:wrap">
-        <button class="primary" id="summaryXlsx" style="background:#059669;border-color:#059669">📊 Export สรุปรายฝ่าย/กอง (Excel)</button>
+        <button class="primary" id="summaryXlsx" style="background:#059669;border-color:#059669" onclick="exportSummaryReport('excel')">📊 ส่งออกสรุปยอด (Excel)</button>
+        <button class="ghost" id="summaryCsv" onclick="exportSummaryReport('csv')">📄 ส่งออกสรุปยอด (CSV)</button>
+        <button class="ghost" id="summaryPdf" style="color:#e11d48" onclick="exportSummaryReport('pdf')">📑 ส่งออกสรุปยอด (PDF)</button>
         <button class="ghost" id="xlsx">📥 ผลประเมินรายบุคคล (Excel)</button>
         <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
-        <button class="ghost" id="headcountBtn">👥 ตั้งค่ากำลังพล</button>
+        <button class="ghost" id="headcountBtn" onclick="openHeadcount()">👥 กำหนดจำนวนบุคลากรเป้าหมาย</button>
         <button class="ghost" id="refresh">รีเฟรชข้อมูล</button>
         <button class="ghost" id="closeAdmin">← กลับหน้าแบบประเมิน</button>
       </div>
@@ -563,7 +768,15 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <h3 class="secTitle">ความครอบคลุมของการประเมิน</h3>
     <div class="tiles" id="tiles"></div>
 
-    <h3 class="secTitle">สรุปผลการประเมินแยกตามสังกัด / ฝ่าย</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin:26px 0 10px;padding-bottom:7px;border-bottom:2px solid var(--yellow)">
+      <h3 class="secTitle" style="margin:0;padding-bottom:0;border-bottom:none">สรุปยอดผู้ลงทะเบียนและผลการประเมินแยกตามฝ่าย</h3>
+      <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+        <button class="primary" style="background:#059669;border-color:#059669;font-size:0.8rem;padding:0.35rem 0.75rem;" onclick="exportSummaryReport('excel')">📊 ส่งออกสรุปยอด Excel</button>
+        <button class="ghost" style="font-size:0.8rem;padding:0.35rem 0.75rem;" onclick="exportSummaryReport('csv')">📄 ส่งออกสรุปยอด CSV</button>
+        <button class="ghost" style="color:#e11d48;font-size:0.8rem;padding:0.35rem 0.75rem;" onclick="exportSummaryReport('pdf')">📑 ส่งออกสรุปยอด PDF</button>
+        <button class="ghost" style="font-size:0.8rem;padding:0.35rem 0.75rem;" onclick="openHeadcount()">👥 กำหนดจำนวนบุคลากรเป้าหมาย</button>
+      </div>
+    </div>
     <div class="scroll"><table id="deptSummaryTbl"></table></div>
 
     <div class="admin-charts-grid">
@@ -658,6 +871,45 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     </div>
   </form>
 </dialog>
+
+<!-- EXECUTIVE PDF REPORT PREVIEW & EXPORT MODAL -->
+<div id="admin-pdf-modal" class="modal-overlay hidden" style="position:fixed;inset:0;background:rgba(15,44,89,0.7);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeAdminPdfModal()">
+  <div class="glass-card modal-card" style="background:#ffffff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,0.25);max-width:860px;width:95vw;max-height:94vh;display:flex;flex-direction:column;padding:1.25rem;">
+    <!-- Modal Header Bar -->
+    <div id="admin-pdf-modal-header-bar" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid var(--line);padding-bottom:0.85rem;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
+      <div>
+        <h3 style="margin:0;color:var(--blue-d);font-size:1.15rem;display:flex;align-items:center;gap:0.45rem;">
+          <i data-lucide="file-text" style="color:#e11d48;width:22px;height:22px;"></i> รายงานสรุปผลสำหรับผู้บริหาร (Executive PDF Report)
+        </h3>
+        <p style="margin:0.2rem 0 0 0;font-size:0.82rem;color:var(--muted);">
+          เอกสารสรุปความก้าวหน้ารายฝ่าย/กอง • ดาวน์โหลดไฟล์ .pdf หรือพิมพ์/บันทึก PDF คุณภาพสูงได้ทันที
+        </p>
+      </div>
+      <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
+        <button id="pdf-download-btn" class="primary" style="background:#e11d48;border-color:#e11d48;font-size:0.85rem;padding:0.45rem 0.95rem;" onclick="downloadExecutivePdfNow()">
+          <i data-lucide="download" style="width:15px;height:15px;"></i> ดาวน์โหลดไฟล์ PDF (.pdf)
+        </button>
+        <button class="primary" style="background:var(--blue);border-color:var(--blue);font-size:0.85rem;padding:0.45rem 0.95rem;" onclick="printExecutiveReportNow()">
+          <i data-lucide="printer" style="width:15px;height:15px;"></i> พิมพ์ / บันทึกเป็น PDF (คมชัดสูง)
+        </button>
+        <button class="ghost" style="padding:4px 8px;font-size:16px;cursor:pointer;" onclick="closeAdminPdfModal()">✕</button>
+      </div>
+    </div>
+
+    <!-- Scrollable Preview Area -->
+    <div id="pdf-preview-scroll-wrapper" style="flex:1;overflow-y:auto;background:#cbd5e1;padding:1rem;border-radius:8px;display:flex;justify-content:center;">
+      <div id="pdf-report-content" style="background:#ffffff;box-shadow:0 4px 20px rgba(0,0,0,0.18);border-radius:4px;width:750px;max-width:100%;">
+        <!-- Dynamically populated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="toast" class="toast hidden">
+  <i id="toast-icon" data-lucide="info"></i>
+  <span id="toast-message">ข้อความแจ้งเตือน</span>
+</div>
 
 <script>
 const DEFAULT_DEPARTMENTS = {
@@ -1302,7 +1554,8 @@ function render(){
     tile("พนักงาน / ลูกจ้าง",
          `${list.filter(r=>r.empid).length}<small> คน</small> / ${list.filter(r=>!r.empid).length}<small> คน</small>`);
 
-  // ตารางสรุปผลการประเมินแยกตามสังกัด / ฝ่าย และกอง
+  // ตารางสรุปผลการประเมินแยกตามสังกัด / ฝ่าย และกอง (รูปแบบ EPAGO เฉพาะจำนวนบุคลากร)
+  const personId = r => (r.empid && r.empid !== "-" && r.empid !== "(ลูกจ้าง)") ? `emp:${String(r.empid).trim()}` : `contractor:${(r.name||"").trim()}_${(r.unit||"").trim()}`;
   const deptList = Object.keys(HEADCOUNT);
   const otherRows = rows.filter(r => !deptList.includes(r.unit));
   const allDeptsToRender = [...deptList];
@@ -1311,53 +1564,106 @@ function render(){
   const deptRowsHtml = allDeptsToRender.map(dept => {
     const isOther = dept === "อื่นๆ";
     const dRows = isOther ? otherRows : rows.filter(r => r.unit === dept);
-    const dPeople = new Set(dRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+    const dPeople = new Set(dRows.map(personId)).size;
     const targetHc = isOther ? 0 : (HEADCOUNT[dept] ?? 0);
     const dRemaining = targetHc > 0 ? Math.max(0, targetHc - dPeople) : 0;
     const dPct = targetHc > 0 ? (dPeople / targetHc * 100) : null;
-    const dAvgs = avgOf(dRows);
-    const dOverall = dRows.length ? dAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
     const isFilteredDept = sel === dept;
     const isCollapsed = !!collapsedDepts[dept];
 
+    const dDivs = isOther ? {} : (DEPARTMENTS[dept]?.divisions || {});
+    const configuredDivs = Object.keys(dDivs);
+    const userDivs = dRows.filter(r => r.subUnit).map(r => r.subUnit);
+    const allDivNames = Array.from(new Set([...configuredDivs, ...userDivs])).sort();
+    const hasDivisions = allDivNames.length > 0;
+
+    let evalBadge = `<span class="badge-eval badge-eval-none">—</span>`;
+    let progressFillClass = "none";
+    if (targetHc > 0 && dPct !== null) {
+      if (dPct >= 80) {
+        evalBadge = `<span class="badge-eval badge-eval-high"><i data-lucide="check-circle-2" style="width:13px;height:13px;"></i> ดีเยี่ยม</span>`;
+        progressFillClass = "high";
+      } else if (dPct >= 50) {
+        evalBadge = `<span class="badge-eval badge-eval-med"><i data-lucide="alert-triangle" style="width:13px;height:13px;"></i> ปานกลาง</span>`;
+        progressFillClass = "med";
+      } else {
+        evalBadge = `<span class="badge-eval badge-eval-low"><i data-lucide="clock" style="width:13px;height:13px;"></i> ต้องติดตาม</span>`;
+        progressFillClass = "low";
+      }
+    }
+
     const mainDeptRow = `<tr class="dept-row" style="${isFilteredDept && !subSel ? 'background:#fff8e0 !important;' : ''}">
       <td>
-        ${!isOther ? `<button type="button" class="toggle-dept-btn" onclick="toggleDeptCollapse('${dept}')">${isCollapsed ? '▶' : '▼'}</button>` : ''}
-        <strong>${dept}</strong>
+        <div style="display:flex;align-items:center;gap:0.45rem;">
+          ${hasDivisions ? `
+          <button type="button" class="btn-expand-dept" onclick="toggleDeptCollapse('${dept}')" title="${isCollapsed ? 'คลิกดูรายละเอียดระดับกอง' : 'ย่อรายละเอียดกอง'}">
+            <i data-lucide="${isCollapsed ? 'plus' : 'minus'}" style="width:12px;height:12px;"></i>
+          </button>` : `<span style="display:inline-block;width:22px;"></span>`}
+          <strong style="font-size:0.95rem;cursor:pointer;" onclick="filterByDept('${isOther ? "" : dept}', '')" title="คลิกเพื่อกรองเฉพาะฝ่ายนี้">${dept}</strong>
+          ${hasDivisions ? `<span style="font-size:0.75rem;color:var(--muted);font-weight:normal;">(${allDivNames.length} กอง)</span>` : ''}
+        </div>
       </td>
-      <td><strong>${dPeople} คน</strong></td>
-      <td><strong>${targetHc ? targetHc + ' คน' : '<span class="muted">—</span>'}</strong></td>
-      <td><strong>${targetHc ? `<span style="color:${dRemaining === 0 ? '#10b981' : '#e11d48'}">${dRemaining} คน</span>` : '<span class="muted">—</span>'}</strong></td>
-      <td><strong>${dPct !== null ? `<span style="color:${dPct >= 100 ? '#10b981' : 'var(--blue)'}">${dPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</strong></td>
-      ${dAvgs.map(v => `<td><strong>${dRows.length ? v.toFixed(2) : '—'}</strong></td>`).join('')}
-      <td><strong>${dRows.length ? dOverall.toFixed(2) : '—'}</strong></td>
-      <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${isOther ? "" : dept}', '')">${(isFilteredDept && !subSel) ? 'กำลังกรอง' : 'เลือกดูฝ่าย'}</button></td>
+      <td style="text-align:center;font-weight:700;color:var(--blue-d);">${targetHc > 0 ? targetHc.toLocaleString() : '<span class="muted">—</span>'}</td>
+      <td style="text-align:center;color:#10b981;font-weight:700;">${dPeople.toLocaleString()}</td>
+      <td style="text-align:center;color:#f59e0b;font-weight:700;">${targetHc > 0 ? dRemaining.toLocaleString() : '<span class="muted">—</span>'}</td>
+      <td style="text-align:center;">
+        ${targetHc > 0 && dPct !== null ? `
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.45rem;">
+          <div class="table-mini-progress" style="flex:1;max-width:90px;">
+            <span class="table-mini-progress-pct" style="color:${dPct >= 80 ? '#10b981' : dPct >= 50 ? '#f59e0b' : '#ef4444'};">${dPct.toFixed(1)}%</span>
+            <div class="table-mini-progress-track">
+              <div class="table-mini-progress-fill ${progressFillClass}" style="width:${Math.min(100, Math.max(0, dPct))}%;"></div>
+            </div>
+          </div>
+          ${evalBadge}
+        </div>` : `<span class="muted">—</span>`}
+      </td>
     </tr>`;
 
     if (isOther || isCollapsed) return mainDeptRow;
 
-    const dDivs = DEPARTMENTS[dept]?.divisions || {};
-    const divNames = [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
-
-    const divisionRowsHtml = divNames.map(divName => {
+    const divisionRowsHtml = allDivNames.map(divName => {
       const divRows = dRows.filter(r => r.subUnit === divName);
-      const divPeople = new Set(divRows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+      const divPeople = new Set(divRows.map(personId)).size;
       const divTargetHc = dDivs[divName] ?? 0;
       const divRemaining = divTargetHc > 0 ? Math.max(0, divTargetHc - divPeople) : 0;
       const divPct = divTargetHc > 0 ? (divPeople / divTargetHc * 100) : null;
-      const divAvgs = avgOf(divRows);
-      const divOverall = divRows.length ? divAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
       const isFilteredDiv = (sel === dept && subSel === divName);
 
-      return `<tr class="sub-row" style="${isFilteredDiv ? 'background:#fff8e0;' : ''}">
-        <td style="padding-left:26px;color:var(--muted)">↳ ${divName}</td>
-        <td>${divPeople} คน</td>
-        <td>${divTargetHc ? divTargetHc + ' คน' : '<span class="muted">—</span>'}</td>
-        <td>${divTargetHc ? `<span style="color:${divRemaining === 0 ? '#10b981' : '#e11d48'}">${divRemaining} คน</span>` : '<span class="muted">—</span>'}</td>
-        <td>${divPct !== null ? `<span style="color:${divPct >= 100 ? '#10b981' : 'var(--blue)'};font-weight:600">${divPct.toFixed(1)}%</span>` : '<span class="muted">—</span>'}</td>
-        ${divAvgs.map(v => `<td>${divRows.length ? v.toFixed(2) : '—'}</td>`).join('')}
-        <td>${divRows.length ? divOverall.toFixed(2) : '—'}</td>
-        <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('${dept}', '${divName}')">${isFilteredDiv ? 'กำลังกรอง' : 'เลือกดูกอง'}</button></td>
+      let divEvalBadge = `<span class="badge-eval badge-eval-none" style="font-size:0.72rem;padding:0.15rem 0.45rem;">—</span>`;
+      let divProgressFillClass = "none";
+      if (divTargetHc > 0 && divPct !== null) {
+        if (divPct >= 80) {
+          divEvalBadge = `<span class="badge-eval badge-eval-high" style="font-size:0.72rem;padding:0.15rem 0.45rem;"><i data-lucide="check-circle-2" style="width:11px;height:11px;"></i> ดีเยี่ยม</span>`;
+          divProgressFillClass = "high";
+        } else if (divPct >= 50) {
+          divEvalBadge = `<span class="badge-eval badge-eval-med" style="font-size:0.72rem;padding:0.15rem 0.45rem;"><i data-lucide="alert-triangle" style="width:11px;height:11px;"></i> ปานกลาง</span>`;
+          divProgressFillClass = "med";
+        } else {
+          divEvalBadge = `<span class="badge-eval badge-eval-low" style="font-size:0.72rem;padding:0.15rem 0.45rem;"><i data-lucide="clock" style="width:11px;height:11px;"></i> ต้องติดตาม</span>`;
+          divProgressFillClass = "low";
+        }
+      }
+
+      return `<tr class="subdivision-row" style="${isFilteredDiv ? 'background:#fff8e0 !important;' : ''}">
+        <td class="subdivision-cell-name">
+          <span style="color:var(--ink);font-weight:500;cursor:pointer;" onclick="filterByDept('${dept}', '${divName}')" title="คลิกเพื่อกรองเฉพาะกองนี้">${divName}</span>
+        </td>
+        <td style="text-align:center;font-weight:600;color:var(--blue-d);font-size:0.88rem;">${divTargetHc > 0 ? divTargetHc.toLocaleString() : '<span class="muted">—</span>'}</td>
+        <td style="text-align:center;color:#10b981;font-weight:600;font-size:0.88rem;">${divPeople.toLocaleString()}</td>
+        <td style="text-align:center;color:#f59e0b;font-weight:600;font-size:0.88rem;">${divTargetHc > 0 ? divRemaining.toLocaleString() : '<span class="muted">—</span>'}</td>
+        <td style="text-align:center;">
+          ${divTargetHc > 0 && divPct !== null ? `
+          <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+            <div class="table-mini-progress" style="flex:1;max-width:80px;">
+              <span class="table-mini-progress-pct" style="color:${divPct >= 80 ? '#10b981' : divPct >= 50 ? '#f59e0b' : '#ef4444'};font-size:0.8rem;">${divPct.toFixed(1)}%</span>
+              <div class="table-mini-progress-track" style="height:5px;">
+                <div class="table-mini-progress-fill ${divProgressFillClass}" style="width:${Math.min(100, Math.max(0, divPct))}%;"></div>
+              </div>
+            </div>
+            ${divEvalBadge}
+          </div>` : `<span class="muted">—</span>`}
+        </td>
       </tr>`;
     }).join('');
 
@@ -1365,34 +1671,52 @@ function render(){
   }).join('');
 
   const overallHc = TOTAL_HEADCOUNT;
-  const overallPeople = new Set(rows.map(r => r.empid ?? `__${r.name}__${r.unit}`)).size;
+  const overallPeople = new Set(rows.map(personId)).size;
   const overallRemaining = overallHc > 0 ? Math.max(0, overallHc - overallPeople) : 0;
   const overallPct = overallHc > 0 ? (overallPeople / overallHc * 100) : null;
-  const allDeptsAvgs = avgOf(rows);
-  const allDeptsOverall = rows.length ? allDeptsAvgs.reduce((a, b) => a + b, 0) / 6 : 0;
 
-  const totalRowHtml = `<tr style="background:#eaf1fa;font-weight:700">
-    <td>รวมทั้งหมด (กฟผ. ไทรน้อย)</td>
-    <td>${overallPeople} คน</td>
-    <td>${overallHc} คน</td>
-    <td>${overallHc ? `<span style="color:${overallRemaining === 0 ? '#10b981' : '#e11d48'}">${overallRemaining} คน</span>` : '<span class="muted">—</span>'}</td>
-    <td>${overallPct !== null ? `${overallPct.toFixed(1)}%` : '—'}</td>
-    ${allDeptsAvgs.map(v => `<td>${rows.length ? v.toFixed(2) : '—'}</td>`).join('')}
-    <td>${rows.length ? allDeptsOverall.toFixed(2) : '—'}</td>
-    <td><button class="ghost" style="padding:2px 8px;font-size:11px" type="button" onclick="filterByDept('', '')">ทั้งหมด</button></td>
+  let grandEvalBadge = `<span class="badge-eval badge-eval-none">—</span>`;
+  let grandProgressFillClass = "none";
+  if (overallHc > 0 && overallPct !== null) {
+    if (overallPct >= 80) {
+      grandEvalBadge = `<span class="badge-eval badge-eval-high"><i data-lucide="check-circle-2" style="width:13px;height:13px;"></i> ดีเยี่ยม</span>`;
+      grandProgressFillClass = "high";
+    } else if (overallPct >= 50) {
+      grandEvalBadge = `<span class="badge-eval badge-eval-med"><i data-lucide="alert-triangle" style="width:13px;height:13px;"></i> ปานกลาง</span>`;
+      grandProgressFillClass = "med";
+    } else {
+      grandEvalBadge = `<span class="badge-eval badge-eval-low"><i data-lucide="clock" style="width:13px;height:13px;"></i> ต้องติดตาม</span>`;
+      grandProgressFillClass = "low";
+    }
+  }
+
+  const totalRowHtml = `<tr style="background:#eef3fa;border-top:2.5px solid var(--blue);font-weight:700">
+    <td><strong style="color:var(--blue-d);font-size:0.95rem;cursor:pointer;" onclick="filterByDept('', '')" title="คลิกเพื่อดูทั้งหมด">รวมทุกฝ่าย / สังกัดทั้งหมด</strong></td>
+    <td style="text-align:center;font-weight:800;font-size:1.05rem;color:var(--blue-d);">${overallHc > 0 ? overallHc.toLocaleString() : '—'}</td>
+    <td style="text-align:center;font-weight:800;font-size:1.05rem;color:#10b981;">${overallPeople.toLocaleString()}</td>
+    <td style="text-align:center;font-weight:800;font-size:1.05rem;color:#f59e0b;">${overallHc > 0 ? overallRemaining.toLocaleString() : '—'}</td>
+    <td style="text-align:center;">
+      ${overallHc > 0 && overallPct !== null ? `
+      <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+        <div class="table-mini-progress" style="flex:1;max-width:90px;">
+          <span class="table-mini-progress-pct" style="color:${overallPct >= 80 ? '#10b981' : overallPct >= 50 ? '#f59e0b' : '#ef4444'};font-size:0.95rem;">${overallPct.toFixed(1)}%</span>
+          <div class="table-mini-progress-track">
+            <div class="table-mini-progress-fill ${grandProgressFillClass}" style="width:${Math.min(100, Math.max(0, overallPct))}%;"></div>
+          </div>
+        </div>
+        ${grandEvalBadge}
+      </div>` : `<span class="muted">—</span>`}
+    </td>
   </tr>`;
 
   $("#deptSummaryTbl").innerHTML = `
     <thead>
-      <tr>
-        <th>สังกัด (ฝ่าย / กอง)</th>
-        <th>ประเมินแล้ว</th>
-        <th>กำลังพล</th>
-        <th>ยังไม่ทำ (คน)</th>
-        <th>ร้อยละ</th>
-        ${SHORT.map(s => `<th>${s}</th>`).join('')}
-        <th>รวมเฉลี่ย</th>
-        <th>การทำงาน</th>
+      <tr style="background-color: var(--blue-d);">
+        <th style="padding: 0.6rem 0.8rem; font-size: 0.85rem; white-space: nowrap;">สังกัด / ฝ่าย</th>
+        <th style="text-align: center; padding: 0.6rem 0.8rem; font-size: 0.85rem; white-space: nowrap;">เป้าหมาย (คน)</th>
+        <th style="text-align: center; padding: 0.6rem 0.8rem; font-size: 0.85rem; color: #10b981; white-space: nowrap;">ประเมินแล้ว (คน)</th>
+        <th style="text-align: center; padding: 0.6rem 0.8rem; font-size: 0.85rem; color: #f59e0b; white-space: nowrap;">ยังไม่ทำ/คงเหลือ (คน)</th>
+        <th style="text-align: center; padding: 0.6rem 0.8rem; font-size: 0.85rem; color: #10b981; white-space: nowrap;">% ประเมินแล้ว</th>
       </tr>
     </thead>
     <tbody>
@@ -1419,23 +1743,674 @@ function render(){
         `<button class="del-btn" onclick="delRow(${i})">ลบ</button>` +
         `</td></tr>`;
     }).join("");
+
+  if (window.lucide) lucide.createIcons();
 }
 
-$("#summaryXlsx").onclick = async e => {
-  const btn = e.target;
-  const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = "กำลังสร้างไฟล์สรุป...";
-  try {
-    const r = await fetch("/api/export?type=summary", {headers: authHdr(adminPw)});
-    if (!r.ok) throw new Error(await errMsg(r));
-    const a = Object.assign(document.createElement("a"), {
-      href: URL.createObjectURL(await r.blob()),
-      download: `สรุปความก้าวหน้ารายฝ่าย-กอง-${new Date().toISOString().slice(0,10)}.xlsx`,
-    });
-    a.click(); URL.revokeObjectURL(a.href);
-  } catch (err) { alert("export สรุปไม่สำเร็จ: " + err.message); }
-  btn.disabled = false; btn.textContent = origText;
-};
+// --- สรุปข้อมูลสำหรับส่งออกรายงาน (ตามแบบ EPAGO) ---
+function getAffiliationSummaryData() {
+  const stats = {};
+  const allDeptKeys = Object.keys(HEADCOUNT);
+  allDeptKeys.forEach(u => {
+    stats[u] = { total: 0, completed: 0, inProgress: 0, divisions: {} };
+  });
+
+  const personId = r => (r.empid && r.empid !== "-" && r.empid !== "(ลูกจ้าง)") ? `emp:${String(r.empid).trim()}` : `contractor:${(r.name||"").trim()}_${(r.unit||"").trim()}`;
+  const uniqueMap = new Map();
+  rows.forEach(r => {
+    const key = personId(r);
+    if (!uniqueMap.has(key)) uniqueMap.set(key, r);
+  });
+
+  Array.from(uniqueMap.values()).forEach(user => {
+    let deptKey = user.unit;
+    if (!stats[deptKey]) {
+      stats[deptKey] = { total: 0, completed: 0, inProgress: 0, divisions: {} };
+    }
+    stats[deptKey].total++;
+    stats[deptKey].completed++;
+
+    const divKey = (user.subUnit && user.subUnit.trim() && user.subUnit !== "-") ? user.subUnit.trim() : "ทั่วไป";
+    if (!stats[deptKey].divisions[divKey]) {
+      stats[deptKey].divisions[divKey] = { total: 0, completed: 0, inProgress: 0 };
+    }
+    stats[deptKey].divisions[divKey].total++;
+    stats[deptKey].divisions[divKey].completed++;
+  });
+
+  const grandTarget = TOTAL_HEADCOUNT;
+  const grandCompleted = uniqueMap.size;
+  const grandRemaining = grandTarget > 0 ? Math.max(0, grandTarget - grandCompleted) : 0;
+  const grandCompPctVal = grandTarget > 0 ? (grandCompleted / grandTarget) * 100 : 0;
+  const grandCompPctStr = grandTarget > 0 ? grandCompPctVal.toFixed(1) + "%" : "—";
+  const grandEvalText = grandTarget > 0 ? (grandCompPctVal >= 80 ? "ดีเยี่ยม" : grandCompPctVal >= 50 ? "ปานกลาง" : "ต้องติดตาม") : "—";
+
+  return {
+    stats,
+    deptList: allDeptKeys,
+    grandTarget,
+    grandCompleted,
+    grandRemaining,
+    grandCompPctVal,
+    grandCompPctStr,
+    grandEvalText
+  };
+}
+
+function exportSummaryReport(format = 'excel') {
+  const summaryData = getAffiliationSummaryData();
+  if (format === 'csv') {
+    exportSummaryToCSV(summaryData);
+  } else if (format === 'pdf') {
+    openExecutivePdfModal(summaryData);
+  } else {
+    exportSummaryToExcel(summaryData);
+  }
+}
+
+function exportSummaryToExcel(data) {
+  const { stats, deptList, grandTarget, grandCompleted, grandRemaining, grandCompPctStr } = data;
+  
+  let html = `
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <!--[if gte mso 9]>
+      <xml>
+          <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                  <x:ExcelWorksheet>
+                      <x:Name>สรุปข้อมูลตามฝ่ายและกอง</x:Name>
+                      <x:WorksheetOptions>
+                          <x:DisplayGridlines/>
+                      </x:WorksheetOptions>
+                  </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
+      <style>
+          table { border-collapse: collapse; width: 100%; font-family: Tahoma, 'Noto Sans Thai', 'Segoe UI', sans-serif; font-size: 11pt; }
+          th { background-color: #1b4c9e; color: #ffffff; border: 1px solid #94a3b8; padding: 10px 8px; text-align: center; font-weight: bold; }
+          td { border: 1px solid #cbd5e1; padding: 7px 9px; vertical-align: middle; }
+          .dept-merged { background-color: #f1f5f9; font-weight: bold; text-align: center; vertical-align: middle; font-size: 11pt; color: #0f2c59; }
+          .dept-summary-row { background-color: #f8fafc; font-weight: bold; }
+          .grand-total-row { background-color: #0f2c59; color: #ffffff; font-weight: bold; font-size: 11.5pt; }
+          .grand-total-row td { border-color: #0f2c59; color: #ffffff; }
+          .num-center { text-align: center; mso-number-format: "\\#\\,\\#\\#0"; }
+          .pct-center { text-align: center; font-weight: bold; }
+          .title-header { font-size: 15pt; font-weight: bold; color: #1b4c9e; text-align: center; }
+          .subtitle-header { font-size: 10pt; color: #64748b; text-align: center; }
+      </style>
+  </head>
+  <body>
+      <table>
+          <tr>
+              <td colspan="6" class="title-header" style="border: none; padding-bottom: 4px;">
+                  รายงานสรุปผลการเข้าร่วมแบบประเมินพฤติกรรมการอนุรักษ์พลังงาน กฟผ. ไทรน้อย
+              </td>
+          </tr>
+          <tr>
+              <td colspan="6" class="subtitle-header" style="border: none; padding-bottom: 12px;">
+                  ข้อมูล ณ วันที่ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} น.
+              </td>
+          </tr>
+          <thead>
+              <tr>
+                  <th style="width: 150px;">สังกัดฝ่าย</th>
+                  <th style="width: 200px;">สังกัดกอง</th>
+                  <th style="width: 120px;">เป้าหมาย (คน)</th>
+                  <th style="width: 130px;">ประเมินแล้ว (คน)</th>
+                  <th style="width: 140px;">ยังไม่ทำ/คงเหลือ (คน)</th>
+                  <th style="width: 110px;">% ประเมินแล้ว</th>
+              </tr>
+          </thead>
+          <tbody>
+              <tr class="grand-total-row">
+                  <td colspan="2" style="text-align: center; font-weight: bold;">ภาพรวมทั้งหมด (รวมทุกฝ่าย/ทุกกอง)</td>
+                  <td class="num-center" style="font-weight: bold;">${grandTarget.toLocaleString('en-US')}</td>
+                  <td class="num-center" style="font-weight: bold; color: #34d399;">${grandCompleted.toLocaleString('en-US')}</td>
+                  <td class="num-center" style="font-weight: bold; color: #fbbf24;">${grandRemaining.toLocaleString('en-US')}</td>
+                  <td class="pct-center" style="font-weight: bold; color: #34d399;">${grandCompPctStr}</td>
+              </tr>
+  `;
+
+  deptList.forEach(u => {
+      const d = stats[u] || { total: 0, completed: 0, inProgress: 0 };
+      const target = (HEADCOUNT[u] !== undefined) ? parseInt(HEADCOUNT[u], 10) : 0;
+      const compCount = d.completed;
+      const remainingCount = target > 0 ? Math.max(0, target - compCount) : 0;
+      
+      const compPctVal = target > 0 ? (compCount / target) * 100 : 0;
+      const compPctStr = target > 0 ? compPctVal.toFixed(1) + "%" : "—";
+      const compColor = target > 0 ? (compPctVal >= 80 ? "#059669" : compPctVal >= 50 ? "#d97706" : "#dc2626") : "#64748b";
+
+      const divMap = DEPARTMENTS[u]?.divisions || {};
+      const configuredDivs = Object.keys(divMap);
+      const userDivs = Object.keys(stats[u]?.divisions || {});
+      const allDivNames = Array.from(new Set([...configuredDivs, ...userDivs])).sort();
+
+      const totalRowsForDept = 1 + allDivNames.length;
+
+      html += `
+          <tr class="dept-summary-row">
+              <td rowspan="${totalRowsForDept}" class="dept-merged">${u}</td>
+              <td style="font-weight: bold; color: #1b4c9e;">ภาพรวมฝ่าย (รวมทุกกอง)</td>
+              <td class="num-center" style="font-weight: bold;">${target > 0 ? target.toLocaleString('en-US') : '—'}</td>
+              <td class="num-center" style="font-weight: bold; color: #059669;">${compCount.toLocaleString('en-US')}</td>
+              <td class="num-center" style="font-weight: bold; color: #d97706;">${target > 0 ? remainingCount.toLocaleString('en-US') : '—'}</td>
+              <td class="pct-center" style="font-weight: bold; color: ${compColor};">${compPctStr}</td>
+          </tr>
+      `;
+
+      allDivNames.forEach(divName => {
+          const divTarget = divMap[divName] !== undefined ? parseInt(divMap[divName], 10) : 0;
+          const divData = stats[u]?.divisions?.[divName] || { total: 0, completed: 0, inProgress: 0 };
+          const divComp = divData.completed;
+          const divRemaining = divTarget > 0 ? Math.max(0, divTarget - divComp) : 0;
+
+          const divCompPctVal = divTarget > 0 ? (divComp / divTarget) * 100 : 0;
+          const divCompPct = divTarget > 0 ? divCompPctVal.toFixed(1) + "%" : "—";
+          const divCompColor = divTarget > 0 ? (divCompPctVal >= 80 ? "#059669" : divCompPctVal >= 50 ? "#d97706" : "#dc2626") : "#64748b";
+
+          html += `
+              <tr>
+                  <td style="padding-left: 14px; color: #334155;">${divName}</td>
+                  <td class="num-center">${divTarget > 0 ? divTarget.toLocaleString('en-US') : '—'}</td>
+                  <td class="num-center" style="color: #059669; font-weight: 600;">${divComp.toLocaleString('en-US')}</td>
+                  <td class="num-center" style="color: #d97706;">${divTarget > 0 ? divRemaining.toLocaleString('en-US') : '—'}</td>
+                  <td class="pct-center" style="color: ${divCompColor}; font-weight: 600;">${divCompPct}</td>
+              </tr>
+          `;
+      });
+  });
+
+  html += `
+          </tbody>
+      </table>
+  </body>
+  </html>
+  `;
+
+  const blob = new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `EnergySave_Summary_Report_${new Date().toISOString().slice(0, 10)}.xls`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast("ส่งออกไฟล์สรุปยอดตามฝ่าย/กอง (Excel) สำเร็จแล้ว 📊");
+}
+
+function exportSummaryToCSV(data) {
+  const { stats, deptList, grandTarget, grandCompleted, grandRemaining, grandCompPctStr } = data;
+  
+  let headers = [
+      "สังกัดฝ่าย",
+      "สังกัดกอง",
+      "เป้าหมาย (คน)",
+      "ประเมินแล้ว (คน)",
+      "ยังไม่ทำ/คงเหลือ (คน)",
+      "% ประเมินแล้ว"
+  ];
+
+  let csvContent = headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\n";
+
+  const grandRow = [
+      "ภาพรวมทั้งหมด (รวมทุกฝ่าย)",
+      "ทุกสังกัดกอง",
+      grandTarget,
+      grandCompleted,
+      grandRemaining,
+      grandCompPctStr
+  ];
+  csvContent += grandRow.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",") + "\n";
+
+  deptList.forEach(u => {
+      const d = stats[u] || { total: 0, completed: 0, inProgress: 0 };
+      const target = (HEADCOUNT[u] !== undefined) ? parseInt(HEADCOUNT[u], 10) : 0;
+      const compCount = d.completed;
+      const remainingCount = target > 0 ? Math.max(0, target - compCount) : 0;
+      
+      const compPctVal = target > 0 ? (compCount / target) * 100 : 0;
+      const compPctStr = target > 0 ? compPctVal.toFixed(1) + "%" : "—";
+
+      const divMap = DEPARTMENTS[u]?.divisions || {};
+      const configuredDivs = Object.keys(divMap);
+      const userDivs = Object.keys(stats[u]?.divisions || {});
+      const allDivNames = Array.from(new Set([...configuredDivs, ...userDivs])).sort();
+
+      const deptSummaryRow = [
+          u,
+          "ภาพรวมฝ่าย (รวมทุกกอง)",
+          target > 0 ? target : "—",
+          compCount,
+          target > 0 ? remainingCount : "—",
+          compPctStr
+      ];
+      csvContent += deptSummaryRow.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",") + "\n";
+
+      allDivNames.forEach(divName => {
+          const divTarget = divMap[divName] !== undefined ? parseInt(divMap[divName], 10) : 0;
+          const divData = stats[u]?.divisions?.[divName] || { total: 0, completed: 0, inProgress: 0 };
+          const divComp = divData.completed;
+          const divRemaining = divTarget > 0 ? Math.max(0, divTarget - divComp) : 0;
+
+          const divCompPctVal = divTarget > 0 ? (divComp / divTarget) * 100 : 0;
+          const divCompPct = divTarget > 0 ? divCompPctVal.toFixed(1) + "%" : "—";
+
+          const divRow = [
+              "",
+              divName,
+              divTarget > 0 ? divTarget : "—",
+              divComp,
+              divTarget > 0 ? divRemaining : "—",
+              divCompPct
+          ];
+          csvContent += divRow.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",") + "\n";
+      });
+  });
+
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `EnergySave_Summary_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast("ส่งออกไฟล์สรุปยอดตามฝ่าย/กอง (CSV) สำเร็จแล้ว 📊");
+}
+
+function ensureHtml2PdfLoaded() {
+  if (typeof window.html2pdf !== "undefined") {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "html2pdf.bundle.min.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      const fallbackScript = document.createElement("script");
+      fallbackScript.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+      fallbackScript.onload = () => resolve(true);
+      fallbackScript.onerror = () => {
+        console.warn("Unable to load html2pdf library");
+        resolve(false);
+      };
+      document.head.appendChild(fallbackScript);
+    };
+    document.head.appendChild(script);
+  });
+}
+
+function openExecutivePdfModal(customData = null) {
+  const summaryData = customData || getAffiliationSummaryData();
+  const modal = $("#admin-pdf-modal");
+  const contentArea = $("#pdf-report-content");
+  
+  if (!modal || !contentArea) {
+    const html = generateSummaryPdfHtml(summaryData);
+    openPrintSummaryWindow(html);
+    return;
+  }
+
+  contentArea.innerHTML = generateSummaryPdfHtml(summaryData);
+  modal.classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+
+  showToast("เปิดเอกสารสรุปเรียบร้อย 📄");
+}
+
+function closeAdminPdfModal() {
+  const modal = $("#admin-pdf-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function downloadExecutivePdfNow() {
+  const reportElem = $("#pdf-report-content");
+  if (!reportElem) {
+    showToast("ไม่พบเนื้อหารายงานสำหรับดาวน์โหลด", true);
+    return;
+  }
+
+  const downloadBtn = $("#pdf-download-btn");
+  const originalBtnText = downloadBtn ? downloadBtn.innerHTML : "";
+  if (downloadBtn) {
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = `กำลังบันทึก PDF...`;
+  }
+
+  showToast("กำลังประมวลผลไฟล์ PDF สรุปยอด... 📄");
+
+  await ensureHtml2PdfLoaded();
+
+  if (typeof window.html2pdf !== "undefined") {
+    try {
+      const scrollWrapper = $("#pdf-preview-scroll-wrapper");
+      if (scrollWrapper) scrollWrapper.scrollTop = 0;
+
+      const fileName = `EnergySave_Summary_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const opt = {
+        margin: [10, 8, 10, 8],
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollY: 0,
+          scrollX: 0
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait"
+        },
+        pagebreak: { mode: ["css", "legacy"] }
+      };
+
+      await window.html2pdf().set(opt).from(reportElem).save();
+      showToast("ดาวน์โหลดไฟล์ PDF เรียบร้อยแล้ว 📊");
+    } catch (err) {
+      console.error("Direct html2pdf error:", err);
+      showToast("สคริปต์ดาวน์โหลดขัดข้อง กำลังเปิดหน้าต่างพิมพ์เป็น PDF แทน...", true);
+      setTimeout(() => {
+        printExecutiveReportNow();
+      }, 600);
+    } finally {
+      if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = originalBtnText;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  } else {
+    showToast("เปิดหน้าต่างพิมพ์รายงาน (เลือก Save as PDF ได้ทันที) 🖨️");
+    printExecutiveReportNow();
+    if (downloadBtn) {
+      downloadBtn.disabled = false;
+      downloadBtn.innerHTML = originalBtnText;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+function printExecutiveReportNow() {
+  const modal = $("#admin-pdf-modal");
+  if (modal && modal.classList.contains("hidden")) {
+    modal.classList.remove("hidden");
+  }
+  setTimeout(() => {
+    window.print();
+  }, 150);
+}
+
+function openPrintSummaryWindow(pdfHtml) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    showToast("เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาตป๊อปอัปเพื่อบันทึก PDF", true);
+    return;
+  }
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+      <meta charset="UTF-8">
+      <title>รายงานสรุปผลการเข้าร่วมแบบประเมินพฤติกรรมการอนุรักษ์พลังงาน กฟผ. ไทรน้อย (PDF)</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        @page { size: A4 portrait; margin: 10mm 8mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #ffffff; font-family: 'Noto Sans Thai', 'Sarabun', Tahoma, sans-serif; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { .no-print { display: none !important; } body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <div style="padding: 10px; max-width: 800px; margin: 0 auto;">
+        <div class="no-print" style="margin-bottom: 15px; padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px; color: #1e40af; font-weight: 600;">
+            🖨️ หน้าต่างพิมพ์เอกสาร: เลือกปลายทางเป็น <b>"บันทึกเป็น PDF" (Save as PDF)</b> เพื่อดาวน์โหลดไฟล์
+          </span>
+          <button onclick="window.print()" style="padding: 6px 14px; background: #1b4c9e; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">พิมพ์ / บันทึก PDF</button>
+        </div>
+        ${pdfHtml}
+      </div>
+      <' + 'script>
+        window.onload = function() {
+          setTimeout(function() { window.print(); }, 300);
+        };
+      <' + '/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  showToast("เปิดหน้าต่างพิมพ์รายงานสรุปยอด (สามารถเลือก Save as PDF ได้) 🖨️");
+}
+
+function generateSummaryPdfHtml(data) {
+  const { stats, deptList, grandTarget, grandCompleted, grandRemaining, grandCompPctStr, grandCompPctVal } = data;
+  const currentDateThai = new Date().toLocaleDateString('th-TH', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+  });
+
+  const grandKpiColor = grandCompPctVal >= 80 ? "#059669" : grandCompPctVal >= 50 ? "#d97706" : "#dc2626";
+
+  let html = `
+  <div style="font-family: 'Noto Sans Thai', 'Sarabun', Tahoma, 'Segoe UI', sans-serif; color: #1e293b; background: #ffffff; padding: 14px 16px; width: 750px; box-sizing: border-box; line-height: 1.35;">
+      <!-- Header -->
+      <div style="border-bottom: 2.5px solid #1b4c9e; padding-bottom: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #1b4c9e 0%, #0f2c59 100%); display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 800; font-size: 20px; box-shadow: 0 3px 8px rgba(27,76,158,0.25);">
+                  ⚡
+              </div>
+              <div>
+                  <div style="font-size: 11px; font-weight: 700; color: #1b4c9e; letter-spacing: 0.5px; text-transform: uppercase;">
+                      การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย (กฟผ.) ไทรน้อย
+                  </div>
+                  <div style="font-size: 15px; font-weight: 800; color: #0f2c59; line-height: 1.25; margin-top: 1px;">
+                      รายงานสรุปผลการเข้าร่วมแบบประเมินพฤติกรรมการอนุรักษ์พลังงาน
+                  </div>
+                  <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+                      EGAT Sainoi EnergySave Portal • เอกสารสรุปสำหรับผู้บริหาร
+                  </div>
+              </div>
+          </div>
+          <div style="text-align: right; min-width: 170px;">
+              <div style="font-size: 9.5px; color: #64748b;">ข้อมูล ณ วันที่</div>
+              <div style="font-size: 10.5px; font-weight: 700; color: #1b4c9e;">${currentDateThai} น.</div>
+              <div style="margin-top: 4px; display: inline-block; font-size: 9px; padding: 2px 7px; border-radius: 10px; background: #ecfdf5; color: #059669; font-weight: 700; border: 1px solid #a7f3d0;">
+                  สรุปภาพรวม 6 คอลัมน์หลัก
+              </div>
+          </div>
+      </div>
+
+      <!-- Mini Executive KPI Summary Cards -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; width: 100%;">
+          <div style="flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 8px; text-align: center;">
+              <div style="font-size: 9.5px; color: #64748b; font-weight: 600;">เป้าหมายรวมทั้งหมด</div>
+              <div style="font-size: 15px; font-weight: 800; color: #1b4c9e; font-family: Tahoma, sans-serif; margin-top: 1px;">
+                  ${grandTarget.toLocaleString('en-US')} <span style="font-size: 9.5px; font-weight: normal; color: #64748b;">คน</span>
+              </div>
+          </div>
+          <div style="flex: 1; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 7px 8px; text-align: center;">
+              <div style="font-size: 9.5px; color: #059669; font-weight: 600;">ประเมินแล้วทั้งหมด</div>
+              <div style="font-size: 15px; font-weight: 800; color: #059669; font-family: Tahoma, sans-serif; margin-top: 1px;">
+                  ${grandCompleted.toLocaleString('en-US')} <span style="font-size: 9.5px; font-weight: normal; color: #059669;">คน</span>
+              </div>
+          </div>
+          <div style="flex: 1; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 7px 8px; text-align: center;">
+              <div style="font-size: 9.5px; color: #d97706; font-weight: 600;">ยังไม่ทำ / คงเหลือ</div>
+              <div style="font-size: 15px; font-weight: 800; color: #d97706; font-family: Tahoma, sans-serif; margin-top: 1px;">
+                  ${grandRemaining.toLocaleString('en-US')} <span style="font-size: 9.5px; font-weight: normal; color: #d97706;">คน</span>
+              </div>
+          </div>
+          <div style="flex: 1; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 7px 8px; text-align: center;">
+              <div style="font-size: 9.5px; color: #1d4ed8; font-weight: 600;">อัตราความสำเร็จภาพรวม</div>
+              <div style="font-size: 15px; font-weight: 800; color: ${grandKpiColor}; font-family: Tahoma, sans-serif; margin-top: 1px;">
+                  ${grandCompPctStr}
+              </div>
+          </div>
+      </div>
+
+      <!-- Table Section -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 9pt; line-height: 1.35; page-break-inside: auto;">
+          <thead>
+              <tr style="background-color: #1b4c9e; color: #ffffff;">
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 130px; text-align: center; font-weight: 700;">สังกัดฝ่าย</th>
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 180px; text-align: center; font-weight: 700;">สังกัดกอง</th>
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 100px; text-align: center; font-weight: 700;">เป้าหมาย (คน)</th>
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 110px; text-align: center; font-weight: 700;">ประเมินแล้ว (คน)</th>
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 120px; text-align: center; font-weight: 700;">ยังไม่ทำ/คงเหลือ (คน)</th>
+                  <th style="border: 1px solid #475569; padding: 6px 5px; width: 95px; text-align: center; font-weight: 700;">% ประเมินแล้ว</th>
+              </tr>
+          </thead>
+
+          <tbody style="page-break-inside: avoid; break-inside: avoid;">
+              <tr style="background-color: #0f2c59; color: #ffffff; font-weight: 700; font-size: 9.5pt;">
+                  <td colspan="2" style="border: 1px solid #0f2c59; padding: 7px 6px; text-align: center; color: #ffffff;">
+                      ภาพรวมทั้งหมด (รวมทุกฝ่าย/ทุกกอง)
+                  </td>
+                  <td style="border: 1px solid #0f2c59; padding: 7px 6px; text-align: center; color: #ffffff;">${grandTarget.toLocaleString('en-US')}</td>
+                  <td style="border: 1px solid #0f2c59; padding: 7px 6px; text-align: center; color: #34d399;">${grandCompleted.toLocaleString('en-US')}</td>
+                  <td style="border: 1px solid #0f2c59; padding: 7px 6px; text-align: center; color: #fbbf24;">${grandRemaining.toLocaleString('en-US')}</td>
+                  <td style="border: 1px solid #0f2c59; padding: 7px 6px; text-align: center; color: #34d399;">${grandCompPctStr}</td>
+              </tr>
+          </tbody>
+  `;
+
+  deptList.forEach(u => {
+      const d = stats[u] || { total: 0, completed: 0, inProgress: 0 };
+      const target = (HEADCOUNT[u] !== undefined) ? parseInt(HEADCOUNT[u], 10) : 0;
+      const compCount = d.completed;
+      const remainingCount = target > 0 ? Math.max(0, target - compCount) : 0;
+      
+      const compPctVal = target > 0 ? (compCount / target) * 100 : 0;
+      const compPctStr = target > 0 ? compPctVal.toFixed(1) + "%" : "—";
+      const compColor = target > 0 ? (compPctVal >= 80 ? "#059669" : compPctVal >= 50 ? "#d97706" : "#dc2626") : "#64748b";
+
+      const divMap = DEPARTMENTS[u]?.divisions || {};
+      const configuredDivs = Object.keys(divMap);
+      const userDivs = Object.keys(stats[u]?.divisions || {});
+      const allDivNames = Array.from(new Set([...configuredDivs, ...userDivs])).sort();
+
+      const totalRowsForDept = 1 + allDivNames.length;
+
+      html += `
+          <tbody class="pdf-dept-group" style="page-break-inside: avoid; break-inside: avoid;">
+              <tr style="background-color: #f8fafc; font-weight: 700;">
+                  <td rowspan="${totalRowsForDept}" style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center; vertical-align: middle; background-color: #f1f5f9; color: #0f2c59; font-weight: 700;">
+                      ${u}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 6px 7px; color: #1b4c9e; font-weight: 700;">
+                      ภาพรวมฝ่าย (รวมทุกกอง)
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center; font-weight: 700;">
+                      ${target > 0 ? target.toLocaleString('en-US') : '—'}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center; color: #059669; font-weight: 700;">
+                      ${compCount.toLocaleString('en-US')}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center; color: #d97706; font-weight: 700;">
+                      ${target > 0 ? remainingCount.toLocaleString('en-US') : '—'}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center; color: ${compColor}; font-weight: 700;">
+                      ${compPctStr}
+                  </td>
+              </tr>
+      `;
+
+      allDivNames.forEach(divName => {
+          const divTarget = divMap[divName] !== undefined ? parseInt(divMap[divName], 10) : 0;
+          const divData = stats[u]?.divisions?.[divName] || { total: 0, completed: 0, inProgress: 0 };
+          const divComp = divData.completed;
+          const divRemaining = divTarget > 0 ? Math.max(0, divTarget - divComp) : 0;
+
+          const divCompPctVal = divTarget > 0 ? (divComp / divTarget) * 100 : 0;
+          const divCompPct = divTarget > 0 ? divCompPctVal.toFixed(1) + "%" : "—";
+          const divCompColor = divTarget > 0 ? (divCompPctVal >= 80 ? "#059669" : divCompPctVal >= 50 ? "#d97706" : "#dc2626") : "#64748b";
+
+          html += `
+              <tr style="background-color: #ffffff;">
+                  <td style="border: 1px solid #cbd5e1; padding: 5px 7px 5px 14px; color: #334155;">
+                      ${divName}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center;">
+                      ${divTarget > 0 ? divTarget.toLocaleString('en-US') : '—'}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; color: #059669; font-weight: 600;">
+                      ${divComp.toLocaleString('en-US')}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; color: #d97706;">
+                      ${divTarget > 0 ? divRemaining.toLocaleString('en-US') : '—'}
+                  </td>
+                  <td style="border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; color: ${divCompColor}; font-weight: 600;">
+                      ${divCompPct}
+                  </td>
+              </tr>
+          `;
+      });
+
+      html += `</tbody>`;
+  });
+
+  html += `
+      </table>
+
+      <!-- Footer Note -->
+      <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8.5pt; color: #64748b;">
+          <div>
+              * ข้อมูลสรุปผลการดำเนินงาน แบบประเมินพฤติกรรมการอนุรักษ์พลังงาน กฟผ. ไทรน้อย
+          </div>
+          <div>
+              ระบบสารสนเทศ EGAT Sainoi EnergySave Portal
+          </div>
+      </div>
+  </div>
+  `;
+
+  return html;
+}
+
+function showToast(message, isError = false) {
+  const toast = $("#toast");
+  if (!toast) return;
+  const toastMsg = $("#toast-message");
+  const toastIcon = $("#toast-icon");
+  if (toastMsg) toastMsg.innerText = message;
+  if (toastIcon) {
+    if (isError) {
+      toast.classList.add("toast-error");
+      toastIcon.setAttribute("data-lucide", "alert-circle");
+    } else {
+      toast.classList.remove("toast-error");
+      toastIcon.setAttribute("data-lucide", "check-circle");
+    }
+  }
+  if (window.lucide) lucide.createIcons();
+  toast.classList.remove("hidden");
+  clearTimeout(window.__toastTimeout);
+  window.__toastTimeout = setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3200);
+}
+
+$("#summaryXlsx").onclick = () => exportSummaryReport('excel');
+const sumCsvBtn = $("#summaryCsv");
+if (sumCsvBtn) sumCsvBtn.onclick = () => exportSummaryReport('csv');
+const sumPdfBtn = $("#summaryPdf");
+if (sumPdfBtn) sumPdfBtn.onclick = () => exportSummaryReport('pdf');
 
 $("#csv").onclick = () => {
   const esc = v => `"${String(v).replace(/"/g,'""')}"`;

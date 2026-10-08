@@ -21,6 +21,10 @@ const styleHeader = row => {
   row.eachCell(c => (c.border = BORDER));
 };
 
+const NAVY = "FF0F2C59";
+const DEPT_BG = "FFF1F5F9";
+const ROW_BG = "FFF8FAFC";
+
 async function handleSummaryExport(all, hcData, res) {
   const departments = (hcData?.departments && Object.keys(hcData.departments).length > 0)
     ? hcData.departments
@@ -30,7 +34,7 @@ async function handleSummaryExport(all, hcData, res) {
     : DEFAULT_HEADCOUNT;
   const effectiveTotal = hcData?.total ?? DEFAULT_TOTAL;
 
-  const personId = r => r.empid ? String(r.empid).trim() : `__${(r.name || "").trim()}__${r.unit || ""}`;
+  const personId = r => (r.empid && r.empid !== "-" && r.empid !== "(ลูกจ้าง)") ? `emp:${String(r.empid).trim()}` : `contractor:${(r.name || "").trim()}_${(r.unit || "").trim()}`;
   const totalPeople = new Set(all.map(personId)).size;
   const totalHc = effectiveTotal;
   const totalRemaining = totalHc > 0 ? Math.max(0, totalHc - totalPeople) : 0;
@@ -40,24 +44,22 @@ async function handleSummaryExport(all, hcData, res) {
   wb.creator = "แบบประเมินสถานภาพการจัดการพลังงาน กฟผ.";
 
   const ws = wb.addWorksheet("สรุปความก้าวหน้ารายฝ่าย-กอง", {
-    views: [{ state: "frozen", ySplit: 7 }],
+    views: [{ state: "frozen", ySplit: 4 }],
     pageSetup: { orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
 
   ws.columns = [
-    { key: "no", width: 10 },
-    { key: "dept", width: 20 },
-    { key: "division", width: 24 },
-    { key: "target", width: 20 },
+    { key: "dept", width: 22 },
+    { key: "division", width: 28 },
+    { key: "target", width: 18 },
     { key: "done", width: 18 },
     { key: "remaining", width: 22 },
     { key: "pct", width: 16 },
-    { key: "status", width: 24 },
   ];
 
   // 1. หัวรายงาน
-  const titleRow = ws.addRow(["รายงานสรุปความก้าวหน้าการตอบแบบประเมินสถานภาพการจัดการพลังงาน (EMM) กฟผ. ไทรน้อย"]);
-  ws.mergeCells(`A${titleRow.number}:H${titleRow.number}`);
+  const titleRow = ws.addRow(["รายงานสรุปผลการเข้าร่วมแบบประเมินพฤติกรรมการอนุรักษ์พลังงาน กฟผ. ไทรน้อย"]);
+  ws.mergeCells(`A${titleRow.number}:F${titleRow.number}`);
   titleRow.font = { ...FONT, size: 16, bold: true, color: { argb: "FFFFFFFF" } };
   titleRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   titleRow.alignment = { horizontal: "center", vertical: "middle" };
@@ -68,86 +70,56 @@ async function handleSummaryExport(all, hcData, res) {
   const dateStr = new Date().toLocaleDateString("th-TH", {
     year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
   });
-  const subRow = ws.addRow([`ข้อมูล ณ วันที่: ${dateStr} น. | จำแนกตามฝ่ายและกอง (เฉพาะจำนวนบุคลากร)`]);
-  ws.mergeCells(`A${subRow.number}:H${subRow.number}`);
+  const subRow = ws.addRow([`ข้อมูล ณ วันที่: ${dateStr} น.`]);
+  ws.mergeCells(`A${subRow.number}:F${subRow.number}`);
   subRow.font = { ...FONT, size: 12, italic: true, color: { argb: "FFDCE7F9" } };
   subRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   subRow.alignment = { horizontal: "center", vertical: "middle" };
   subRow.height = 22;
   subRow.eachCell(c => (c.border = BORDER));
 
-  ws.addRow([]); // ว่างแถว 3
-
-  // 4-5. KPI สรุปภาพรวม
-  const kpiHeadRow = ws.addRow([
-    "กำลังพลเป้าหมายทั้งหมด", "",
-    "เข้าร่วมประเมินแล้ว", "",
-    "ยังไม่ทำ (คงเหลือ)", "",
-    "ความคืบหน้าภาพรวม", ""
-  ]);
-  const kpiValRow = ws.addRow([
-    `${totalHc.toLocaleString()} คน`, "",
-    `${totalPeople.toLocaleString()} คน`, "",
-    `${totalRemaining.toLocaleString()} คน`, "",
-    `${overallPct.toFixed(1)}%`, ""
-  ]);
-  ws.mergeCells(`A${kpiHeadRow.number}:B${kpiHeadRow.number}`);
-  ws.mergeCells(`C${kpiHeadRow.number}:D${kpiHeadRow.number}`);
-  ws.mergeCells(`E${kpiHeadRow.number}:F${kpiHeadRow.number}`);
-  ws.mergeCells(`G${kpiHeadRow.number}:H${kpiHeadRow.number}`);
-  ws.mergeCells(`A${kpiValRow.number}:B${kpiValRow.number}`);
-  ws.mergeCells(`C${kpiValRow.number}:D${kpiValRow.number}`);
-  ws.mergeCells(`E${kpiValRow.number}:F${kpiValRow.number}`);
-  ws.mergeCells(`G${kpiValRow.number}:H${kpiValRow.number}`);
-
-  kpiHeadRow.height = 20;
-  kpiHeadRow.font = { ...FONT, size: 12, bold: true, color: { argb: GRAY_TEXT } };
-  kpiHeadRow.alignment = { horizontal: "center", vertical: "middle" };
-
-  kpiValRow.height = 30;
-  kpiValRow.font = { ...FONT, size: 16, bold: true };
-  kpiValRow.alignment = { horizontal: "center", vertical: "middle" };
-  kpiValRow.getCell(3).font = { ...FONT, size: 16, bold: true, color: { argb: GREEN_TEXT } };
-  kpiValRow.getCell(5).font = { ...FONT, size: 16, bold: true, color: { argb: RED_TEXT } };
-  kpiValRow.getCell(7).font = { ...FONT, size: 16, bold: true, color: { argb: BLUE } };
-
-  [kpiHeadRow, kpiValRow].forEach(r => {
-    r.eachCell(c => {
-      c.border = BORDER;
-      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
-    });
-  });
-
-  ws.addRow([]); // ว่างแถว 6
-
-  // 7. หัวตารางข้อมูล
+  // 3. หัวตารางข้อมูล (6 คอลัมน์ตามแบบ EPAGO)
   const headerRow = ws.addRow([
-    "ลำดับ",
     "สังกัดฝ่าย",
     "สังกัดกอง",
-    "กำลังพลเป้าหมาย (คน)",
+    "เป้าหมาย (คน)",
     "ประเมินแล้ว (คน)",
-    "ยังไม่ทำ / คงเหลือ (คน)",
-    "ความคืบหน้า (%)",
-    "สถานะการติดตาม"
+    "ยังไม่ทำ/คงเหลือ (คน)",
+    "% ประเมินแล้ว"
   ]);
   styleHeader(headerRow);
   headerRow.height = 30;
 
-  const getStatus = (done, target, pct) => {
-    if (target === 0 && done === 0) return "—";
-    if (pct >= 100) return "ครบตามเป้าหมาย (100%)";
-    if (done === 0) return "ยังไม่มีผู้ประเมิน";
-    if (pct < 50) return "ต้องเร่งรัดติดตาม";
-    return "กำลังดำเนินการ";
-  };
+  // 4. แถวสรุปภาพรวมทั้งหมด (Grand Total) แสดงบนสุดเพื่อให้เห็นทันทีแบบ EPAGO
+  const grandRow = ws.addRow([
+    "ภาพรวมทั้งหมด (รวมทุกฝ่าย/ทุกกอง)",
+    "",
+    totalHc,
+    totalPeople,
+    totalRemaining,
+    `${overallPct.toFixed(1)}%`
+  ]);
+  ws.mergeCells(`A${grandRow.number}:B${grandRow.number}`);
+  grandRow.height = 30;
+  grandRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+  grandRow.eachCell(c => (c.border = BORDER));
+  grandRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(1).font = { ...FONT, size: 14, bold: true, color: { argb: "FFFFFFFF" } };
+  grandRow.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(3).font = { ...FONT, size: 14, bold: true, color: { argb: "FFFFFFFF" } };
+  grandRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(4).font = { ...FONT, size: 14, bold: true, color: { argb: "FF34D399" } };
+  grandRow.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(5).font = { ...FONT, size: 14, bold: true, color: { argb: "FFFBBF24" } };
+  grandRow.getCell(6).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(6).font = { ...FONT, size: 14, bold: true, color: { argb: "FF34D399" } };
 
   const deptList = Object.keys(departments);
   const otherRows = all.filter(r => !deptList.includes(r.unit));
   const allDeptsToRender = [...deptList];
   if (otherRows.length > 0) allDeptsToRender.push("อื่นๆ");
 
-  allDeptsToRender.forEach((dept, deptIdx) => {
+  allDeptsToRender.forEach((dept) => {
     const isOther = dept === "อื่นๆ";
     const dRows = isOther ? otherRows : all.filter(r => r.unit === dept);
     const dPeople = new Set(dRows.map(personId)).size;
@@ -155,106 +127,83 @@ async function handleSummaryExport(all, hcData, res) {
     const dRemaining = targetHc > 0 ? Math.max(0, targetHc - dPeople) : 0;
     const dPct = targetHc > 0 ? +(dPeople / targetHc * 100).toFixed(1) : (dPeople > 0 ? 100 : 0);
 
+    const dDivs = isOther ? {} : (departments[dept]?.divisions || {});
+    const divNames = isOther ? [] : [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
+
+    const startDeptRowNum = ws.rowCount + 1;
+    const totalDeptRows = 1 + divNames.length;
+    const endDeptRowNum = startDeptRowNum + totalDeptRows - 1;
+
+    // Dept Summary Row
+    const deptCompColor = targetHc > 0 ? (dPct >= 80 ? "FF059669" : dPct >= 50 ? "FFD97706" : "FFDC2626") : "FF64748B";
     const deptRow = ws.addRow([
-      deptIdx + 1,
       dept,
-      "รวมระดับฝ่าย",
-      targetHc ? targetHc : "—",
+      "ภาพรวมฝ่าย (รวมทุกกอง)",
+      targetHc > 0 ? targetHc : "—",
       dPeople,
-      targetHc ? dRemaining : "—",
-      targetHc > 0 ? `${dPct.toFixed(1)}%` : "—",
-      getStatus(dPeople, targetHc, dPct)
+      targetHc > 0 ? dRemaining : "—",
+      targetHc > 0 ? `${dPct.toFixed(1)}%` : "—"
     ]);
-    deptRow.height = 25;
+    deptRow.height = 26;
     deptRow.font = { ...FONT, bold: true };
-    deptRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: LIGHT_BLUE } };
+    deptRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ROW_BG } };
     deptRow.eachCell(c => (c.border = BORDER));
-    deptRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-    deptRow.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+    deptRow.getCell(2).font = { ...FONT, bold: true, color: { argb: "FF1B4C9E" } };
     deptRow.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
     deptRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+    deptRow.getCell(4).font = { ...FONT, bold: true, color: { argb: "FF059669" } };
     deptRow.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+    deptRow.getCell(5).font = { ...FONT, bold: true, color: { argb: "FFD97706" } };
     deptRow.getCell(6).alignment = { horizontal: "center", vertical: "middle" };
-    deptRow.getCell(7).alignment = { horizontal: "center", vertical: "middle" };
-    deptRow.getCell(8).alignment = { horizontal: "center", vertical: "middle" };
-    if (targetHc > 0) {
-      if (dRemaining > 0) deptRow.getCell(6).font = { ...FONT, bold: true, color: { argb: RED_TEXT } };
-      else deptRow.getCell(6).font = { ...FONT, bold: true, color: { argb: GREEN_TEXT } };
-    }
+    deptRow.getCell(6).font = { ...FONT, bold: true, color: { argb: deptCompColor } };
 
-    if (isOther) return;
-
-    const dDivs = departments[dept]?.divisions || {};
-    const divNames = [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
-
-    divNames.forEach((divName, divIdx) => {
+    // Division rows
+    divNames.forEach((divName) => {
       const divRows = dRows.filter(r => r.subUnit === divName);
       const divPeople = new Set(divRows.map(personId)).size;
       const divTargetHc = dDivs[divName] ?? 0;
       const divRemaining = divTargetHc > 0 ? Math.max(0, divTargetHc - divPeople) : 0;
       const divPct = divTargetHc > 0 ? +(divPeople / divTargetHc * 100).toFixed(1) : (divPeople > 0 ? 100 : 0);
+      const divCompColor = divTargetHc > 0 ? (divPct >= 80 ? "FF059669" : divPct >= 50 ? "FFD97706" : "FFDC2626") : "FF64748B";
 
       const divRow = ws.addRow([
-        `${deptIdx + 1}.${divIdx + 1}`,
-        dept,
+        "",
         `↳ ${divName}`,
-        divTargetHc ? divTargetHc : "—",
+        divTargetHc > 0 ? divTargetHc : "—",
         divPeople,
-        divTargetHc ? divRemaining : "—",
-        divTargetHc > 0 ? `${divPct.toFixed(1)}%` : "—",
-        getStatus(divPeople, divTargetHc, divPct)
+        divTargetHc > 0 ? divRemaining : "—",
+        divTargetHc > 0 ? `${divPct.toFixed(1)}%` : "—"
       ]);
       divRow.height = 22;
       divRow.font = FONT;
       divRow.eachCell(c => (c.border = BORDER));
-      if (divIdx % 2 === 1) {
-        divRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ZEBRA } };
-      }
-      divRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
       divRow.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
-      divRow.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
+      divRow.getCell(2).font = { ...FONT, color: { argb: "FF334155" } };
+      divRow.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
       divRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+      divRow.getCell(4).font = { ...FONT, bold: true, color: { argb: "FF059669" } };
       divRow.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+      divRow.getCell(5).font = { ...FONT, bold: true, color: { argb: "FFD97706" } };
       divRow.getCell(6).alignment = { horizontal: "center", vertical: "middle" };
-      divRow.getCell(7).alignment = { horizontal: "center", vertical: "middle" };
-      divRow.getCell(8).alignment = { horizontal: "center", vertical: "middle" };
-      if (divTargetHc > 0) {
-        if (divRemaining > 0) divRow.getCell(6).font = { ...FONT, color: { argb: RED_TEXT } };
-        else divRow.getCell(6).font = { ...FONT, color: { argb: GREEN_TEXT } };
-      }
+      divRow.getCell(6).font = { ...FONT, bold: true, color: { argb: divCompColor } };
     });
-  });
 
-  // แถวสรุปภาพรวมทั้งหมด (Grand Total)
-  const totalRow = ws.addRow([
-    "รวม",
-    "ภาพรวมทั้งหมด",
-    "กฟผ. ไทรน้อย",
-    totalHc,
-    totalPeople,
-    totalRemaining,
-    `${overallPct.toFixed(1)}%`,
-    overallPct >= 100 ? "ครบตามเป้าหมาย (100%)" : `ความคืบหน้าภาพรวม ${overallPct.toFixed(1)}%`
-  ]);
-  totalRow.height = 28;
-  totalRow.font = { ...FONT, size: 15, bold: true };
-  totalRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: YELLOW } };
-  totalRow.eachCell(c => (c.border = BORDER));
-  totalRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
-  totalRow.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(6).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(7).alignment = { horizontal: "center", vertical: "middle" };
-  totalRow.getCell(8).alignment = { horizontal: "center", vertical: "middle" };
-  if (totalRemaining > 0) {
-    totalRow.getCell(6).font = { ...FONT, size: 15, bold: true, color: { argb: RED_TEXT } };
-  }
+    // Merge Department Cell across all rows of this department
+    if (totalDeptRows > 1) {
+      ws.mergeCells(startDeptRowNum, 1, endDeptRowNum, 1);
+    }
+    const mergedDeptCell = ws.getCell(startDeptRowNum, 1);
+    mergedDeptCell.alignment = { horizontal: "center", vertical: "middle" };
+    mergedDeptCell.font = { ...FONT, bold: true, size: 14, color: { argb: "FF0F2C59" } };
+    mergedDeptCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: DEPT_BG } };
+    for (let r = startDeptRowNum; r <= endDeptRowNum; r++) {
+      ws.getCell(r, 1).border = BORDER;
+    }
+  });
 
   const stamp = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.setHeader("content-disposition", `attachment; filename="energy-progress-summary-${stamp}.xlsx"`);
+  res.setHeader("content-disposition", `attachment; filename="EnergySave_Summary_Report_${stamp}.xlsx"`);
   res.send(Buffer.from(await wb.xlsx.writeBuffer()));
 }
 
