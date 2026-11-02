@@ -73,9 +73,15 @@ export const DEFAULT_DEPARTMENTS = {
     headcount: 131,
     divisions: {
       "กขส-ห.": 73,
-      "กชย-ห.": 32,
+      "กขย-ห.": 32,
       "กวข-ห.": 21,
       "สก. อหข.": 5
+    }
+  },
+  "อื่นๆ": {
+    headcount: 80,
+    divisions: {
+      "ทั่วไป": 80
     }
   }
 };
@@ -83,9 +89,12 @@ export const DEFAULT_DEPARTMENTS = {
 export const DEFAULT_HEADCOUNT = Object.fromEntries(
   Object.entries(DEFAULT_DEPARTMENTS).map(([dept, d]) => [dept, d.headcount])
 );
-export const DEFAULT_TOTAL = Object.values(DEFAULT_HEADCOUNT).reduce((a, b) => a + b, 0); // 1990
+export const DEFAULT_TOTAL = Object.values(DEFAULT_HEADCOUNT).reduce((a, b) => a + b, 0); // 2070
 
 export default async function handler(req, res) {
+  if (typeof res?.setHeader === "function") {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  }
   if (req.method === "GET") {
     try {
       const data = await readHeadcount();

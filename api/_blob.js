@@ -175,6 +175,7 @@ export async function saveHeadcount(data) {
     access: "public",
     addRandomSuffix: false,
     allowOverwrite: true,
+    cacheControlMaxAge: 0,
   });
 }
 
@@ -186,7 +187,10 @@ export async function readHeadcount() {
     const { blobs } = await list({ prefix: "energysave/config/" });
     const b = blobs.find(x => x.pathname === CONFIG_HEADCOUNT_KEY || x.pathname.endsWith("headcount.json"));
     if (!b) return null;
-    return await fetch(b.url).then(r => r.json()).catch(() => null);
+    return await fetch(`${b.url}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" }
+    }).then(r => r.json()).catch(() => null);
   } catch (err) {
     console.warn("[readHeadcount] blob read error, fallback to mock/null:", err.message);
     return globalThis.__headcountMock ?? null;

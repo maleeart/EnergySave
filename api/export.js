@@ -116,21 +116,21 @@ async function handleSummaryExport(all, hcData, res) {
   grandRow.getCell(6).font = { ...FONT, size: 14, bold: true, color: { argb: "FF34D399" } };
 
   const deptList = Object.keys(departments);
-  const otherRows = all.filter(r => !deptList.includes(r.unit));
+  const otherRows = all.filter(r => !deptList.filter(d => d !== "อื่นๆ").includes(r.unit));
   const allDeptsToRender = [...deptList];
-  if (otherRows.length > 0) allDeptsToRender.push("อื่นๆ");
+  if (otherRows.length > 0 && !allDeptsToRender.includes("อื่นๆ")) allDeptsToRender.push("อื่นๆ");
 
   allDeptsToRender.forEach((dept) => {
     const isOther = dept === "อื่นๆ";
     const dRows = isOther ? otherRows : all.filter(r => r.unit === dept);
     const rawDPeople = new Set(dRows.map(personId)).size;
-    const targetHc = isOther ? 0 : (departments[dept]?.headcount ?? HEADCOUNT[dept] ?? 0);
+    const targetHc = departments[dept]?.headcount ?? HEADCOUNT[dept] ?? 0;
     const dPeople = targetHc > 0 ? Math.min(rawDPeople, targetHc) : rawDPeople;
     const dRemaining = targetHc > 0 ? Math.max(0, targetHc - rawDPeople) : 0;
     const dPct = targetHc > 0 ? Math.min(100, +(rawDPeople / targetHc * 100).toFixed(1)) : (rawDPeople > 0 ? 100 : 0);
 
-    const dDivs = isOther ? {} : (departments[dept]?.divisions || {});
-    const divNames = isOther ? [] : [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
+    const dDivs = departments[dept]?.divisions || {};
+    const divNames = [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
 
     const startDeptRowNum = ws.rowCount + 1;
     const totalDeptRows = 1 + divNames.length;

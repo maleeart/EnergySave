@@ -5,7 +5,7 @@ import submit from "./api/submit.js";
 import responses from "./api/responses.js";
 
 const call = (handler, req) => new Promise(done => {
-  const res = { status(c){ this.code = c; return this; }, json(b){ done({code: this.code ?? 200, body: b}); }, end(){ done({code: this.code ?? 200}); } };
+  const res = { setHeader(k, v){ (this.headers ??= {})[k] = v; }, status(c){ this.code = c; return this; }, json(b){ done({code: this.code ?? 200, body: b}); }, end(){ done({code: this.code ?? 200}); } };
   handler({ method: "POST", headers: {}, ...req }, res);
 });
 
@@ -90,11 +90,11 @@ assert.ok(Math.abs((ry2 - ry4) - (ry0 - ry2)) < 0.5, "ระดับ 2 ต้�
 
 assert.match(emmChart([0,0,0,0,0,0], 0), /ยังไม่มีข้อมูล/, "ไม่มีข้อมูลต้องไม่วาดกราฟเปล่า");
 
-// --- โครงสร้างองค์กร 7 ฝ่าย 39 กอง 1,990 คน ---
-assert.equal(Object.keys(DEFAULT_DEPARTMENTS).length, 7, "ต้องมี 7 ฝ่ายเริ่มต้น");
+// --- โครงสร้างองค์กร 8 ฝ่าย 42 กอง 2,070 คน ---
+assert.equal(Object.keys(DEFAULT_DEPARTMENTS).length, 8, "ต้องมี 8 ฝ่ายเริ่มต้น");
 const totalDivisions = Object.values(DEFAULT_DEPARTMENTS).reduce((s, d) => s + Object.keys(d.divisions).length, 0);
-assert.equal(totalDivisions, 41, "ต้องมี 41 กองเริ่มต้นตามแผนผัง");
-assert.equal(TOTAL_HEADCOUNT, 1990, "กำลังพลรวมเริ่มต้นต้องเป็น 1990 คน");
+assert.equal(totalDivisions, 42, "ต้องมี 42 กองเริ่มต้นตามแผนผัง");
+assert.equal(TOTAL_HEADCOUNT, 2070, "กำลังพลรวมเริ่มต้นต้องเป็น 2070 คน");
 
 // --- ความครอบคลุม: นับคนไม่ซ้ำ และไม่โชว์ร้อยละมั่วเมื่อยังไม่ตั้งกำลังพล ---
 const r = (empid, unit) => ({empid, unit, scores: [2,2,2,2,2,2]});
@@ -204,9 +204,9 @@ assert.equal(wsProg.getRow(3).getCell(6).value, "% ประเมินแล�
 // ตรวจสอบแถวสรุปภาพรวมทั้งหมดที่อยู่บนสุด (แถว 4) ตามแบบ EPAGO
 const grandSummaryRow = wsProg.getRow(4);
 assert.equal(grandSummaryRow.getCell(1).value, "ภาพรวมทั้งหมด (รวมทุกฝ่าย/ทุกกอง)");
-assert.equal(grandSummaryRow.getCell(3).value, 1990, "กำลังพลรวมต้องเป็น 1990");
+assert.equal(grandSummaryRow.getCell(3).value, 2070, "กำลังพลรวมต้องเป็น 2070");
 assert.equal(grandSummaryRow.getCell(4).value, 2, "ผู้เข้าร่วมประเมินรวมต้องเป็น 2");
-assert.equal(grandSummaryRow.getCell(5).value, 1988, "ยังไม่ทำต้องเป็น 1990 - 2 = 1988");
+assert.equal(grandSummaryRow.getCell(5).value, 2068, "ยังไม่ทำต้องเป็น 2070 - 2 = 2068");
 
 // ตรวจสอบกรณีผู้ประเมินเกินเป้าหมาย (เช่น มีลูกจ้างเข้ามาร่วมทำ) ใน summary export ต้อง Cap เท่าเป้าหมาย และ 100.0%
 const summaryOverChunks = [];
@@ -289,7 +289,7 @@ const getInitRes = await call(headcountHandler, { method: "GET" });
 assert.equal(getInitRes.code, 200, "headcount: GET ต้องได้ 200");
 assert.ok(getInitRes.body.headcount, "headcount: ต้องมี object headcount");
 assert.ok(getInitRes.body.departments, "headcount: ต้องมี object departments");
-assert.equal(Object.keys(getInitRes.body.departments).length, 7, "headcount: เริ่มต้นต้องมี 7 ฝ่าย");
+assert.equal(Object.keys(getInitRes.body.departments).length, 8, "headcount: เริ่มต้นต้องมี 8 ฝ่าย");
 
 // 2. POST ต้องกันคนไม่มีรหัสผ่าน
 assert.equal((await call(headcountHandler, {

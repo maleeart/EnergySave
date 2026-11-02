@@ -919,6 +919,12 @@ const DEFAULT_DEPARTMENTS = {
       "กปฟร-ธ.": 98, "กปฟรร-ธ.": 70, "กปฟนม-ธ.": 66, "กบคธ-ธ.": 50, "กบห-ธ.": 22, "กศม-ธ.": 13, "ขึ้นตรง ชธธ.": 11
     }
   },
+  "อคม.": {
+    headcount: 149,
+    divisions: {
+      "กคฟ-ธ.": 60, "กคว-ธ.": 34, "กคค-ธ.": 26, "กคภ-ธ.": 13, "กผงม-ธ.": 12, "สก. อคม.": 4
+    }
+  },
   "อบค.": {
     headcount: 609,
     divisions: {
@@ -943,29 +949,29 @@ const DEFAULT_DEPARTMENTS = {
       "กงค-ธ.": 110, "กทค-ธ.": 43, "กบออ-ธ.": 31, "กผงอ-ธ.": 18, "สก. อรอ.": 6, "ขึ้นตรง อรอ.": 4
     }
   },
-  "อคม.": {
-    headcount: 149,
-    divisions: {
-      "กคฟ-ธ.": 60, "กคว-ธ.": 34, "กคค-ธ.": 26, "กคภ-ธ.": 13, "กผงม-ธ.": 12, "สก. อคม.": 4
-    }
-  },
   "อหข.": {
     headcount: 131,
     divisions: {
-      "กขส-ห.": 73, "กชย-ห.": 32, "กวข-ห.": 21, "สก. อหข.": 5
+      "กขส-ห.": 73, "กขย-ห.": 32, "กวข-ห.": 21, "สก. อหข.": 5
+    }
+  },
+  "อื่นๆ": {
+    headcount: 80,
+    divisions: {
+      "ทั่วไป": 80
     }
   }
 };
 
 let DEPARTMENTS = JSON.parse(JSON.stringify(DEFAULT_DEPARTMENTS));
 
-const UNITS = ["สก.ชธธ.","อบค.","อบฟ.","อบย.","อรอ.","อคม.","อหข.","อื่นๆ"];
+const UNITS = ["สก.ชธธ.","อคม.","อบค.","อบฟ.","อบย.","อรอ.","อหข.","อื่นๆ"];
 
 // จำนวนบุคลากรทั้งหมดของแต่ละสังกัด — ใช้เป็นตัวหารของ "ร้อยละที่ประเมินแล้ว"
 const HEADCOUNT = {
-  "สก.ชธธ.": 330, "อบค.": 609, "อบฟ.": 455, "อบย.": 104, "อรอ.": 212, "อคม.": 149, "อหข.": 131,
+  "สก.ชธธ.": 330, "อคม.": 149, "อบค.": 609, "อบฟ.": 455, "อบย.": 104, "อรอ.": 212, "อหข.": 131, "อื่นๆ": 80,
 };
-let TOTAL_HEADCOUNT = 1990; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย
+let TOTAL_HEADCOUNT = 2070; // กำลังพลรวมทั้ง กฟผ. ไทรน้อย
 
 // รูป/เอกสารประกอบแต่ละข้อ — ระบุชื่อไฟล์ตรง ๆ เพราะชื่อไฟล์ไม่ได้เรียงเป็นแบบแผน
 // จะเพิ่มรูปข้อไหน เติมชื่อไฟล์ในอาเรย์ของข้อนั้น (ใส่ได้หลายรูปต่อข้อ)
@@ -1083,7 +1089,7 @@ function renderSubUnits(dept) {
   const subBox = $("#subUnits");
   const otherInp = $("#subUnitOther");
   
-  if (!dept || dept === "อื่นๆ" || !DEPARTMENTS[dept]) {
+  if (!dept || !DEPARTMENTS[dept]) {
     card.classList.add("hidden");
     subBox.innerHTML = "";
     otherInp.classList.add("hidden");
@@ -1110,12 +1116,10 @@ $("#units").onchange = e => {
   const isOther = selected === "อื่นๆ";
   $("#unitOther").classList.toggle("hidden", !isOther);
   $("#unitOther").required = isOther;
-  if (isOther) {
+  if (!isOther) {
     $("#unitOther").value = "";
-    renderSubUnits("");
-  } else {
-    renderSubUnits(selected);
   }
+  renderSubUnits(selected);
 };
 
 $("#subUnits").onchange = e => {
@@ -1198,8 +1202,10 @@ $("#p1").onsubmit = async e => {
   const unit = f.get("unit");
   const subUnitVal = f.get("subUnit");
   let subUnit = null;
-  if (unit !== "อื่นๆ" && subUnitVal) {
+  if (subUnitVal) {
     subUnit = subUnitVal === "อื่นๆ" ? `อื่นๆ: ${$("#subUnitOther").value.trim()}` : subUnitVal;
+  } else if (unit === "อื่นๆ") {
+    subUnit = "ทั่วไป";
   }
   const emptype = f.get("emptype");
   draft = {
@@ -1561,20 +1567,20 @@ function render(){
   const deptList = Object.keys(HEADCOUNT);
   const otherRows = rows.filter(r => !deptList.includes(r.unit));
   const allDeptsToRender = [...deptList];
-  if (otherRows.length > 0) allDeptsToRender.push("อื่นๆ");
+  if (otherRows.length > 0 && !allDeptsToRender.includes("อื่นๆ")) allDeptsToRender.push("อื่นๆ");
 
   const deptRowsHtml = allDeptsToRender.map(dept => {
     const isOther = dept === "อื่นๆ";
-    const dRows = isOther ? otherRows : rows.filter(r => r.unit === dept);
+    const dRows = isOther ? rows.filter(r => r.unit === "อื่นๆ" || !deptList.includes(r.unit)) : rows.filter(r => r.unit === dept);
     const rawDPeople = new Set(dRows.map(personId)).size;
-    const targetHc = isOther ? 0 : (HEADCOUNT[dept] ?? 0);
+    const targetHc = DEPARTMENTS[dept]?.headcount ?? HEADCOUNT[dept] ?? 0;
     const dPeople = targetHc > 0 ? Math.min(rawDPeople, targetHc) : rawDPeople;
     const dRemaining = targetHc > 0 ? Math.max(0, targetHc - rawDPeople) : 0;
     const dPct = targetHc > 0 ? Math.min(100, (rawDPeople / targetHc * 100)) : null;
     const isFilteredDept = sel === dept;
     const isCollapsed = !!collapsedDepts[dept];
 
-    const dDivs = isOther ? {} : (DEPARTMENTS[dept]?.divisions || {});
+    const dDivs = DEPARTMENTS[dept]?.divisions || {};
     const configuredDivs = Object.keys(dDivs);
     const userDivs = dRows.filter(r => r.subUnit).map(r => r.subUnit);
     const allDivNames = Array.from(new Set([...configuredDivs, ...userDivs])).sort();
@@ -1602,7 +1608,7 @@ function render(){
           <button type="button" class="btn-expand-dept" onclick="toggleDeptCollapse('${dept}')" title="${isCollapsed ? 'คลิกดูรายละเอียดระดับกอง' : 'ย่อรายละเอียดกอง'}">
             <i data-lucide="${isCollapsed ? 'plus' : 'minus'}" style="width:12px;height:12px;"></i>
           </button>` : `<span style="display:inline-block;width:22px;"></span>`}
-          <strong style="font-size:0.95rem;cursor:pointer;" onclick="filterByDept('${isOther ? "" : dept}', '')" title="คลิกเพื่อกรองเฉพาะฝ่ายนี้">${dept}</strong>
+          <strong style="font-size:0.95rem;cursor:pointer;" onclick="filterByDept('${dept}', '')" title="คลิกเพื่อกรองเฉพาะฝ่ายนี้">${dept}</strong>
           ${hasDivisions ? `<span style="font-size:0.75rem;color:var(--muted);font-weight:normal;">(${allDivNames.length} กอง)</span>` : ''}
         </div>
       </td>
@@ -1623,7 +1629,7 @@ function render(){
       </td>
     </tr>`;
 
-    if (isOther || isCollapsed) return mainDeptRow;
+    if (isCollapsed) return mainDeptRow;
 
     const divisionRowsHtml = allDivNames.map(divName => {
       const divRows = dRows.filter(r => r.subUnit === divName);
@@ -1675,9 +1681,10 @@ function render(){
   }).join('');
 
   const overallHc = TOTAL_HEADCOUNT;
-  const overallPeople = new Set(rows.map(personId)).size;
-  const overallRemaining = overallHc > 0 ? Math.max(0, overallHc - overallPeople) : 0;
-  const overallPct = overallHc > 0 ? (overallPeople / overallHc * 100) : null;
+  const rawOverallPeople = new Set(rows.map(personId)).size;
+  const overallPeople = overallHc > 0 ? Math.min(rawOverallPeople, overallHc) : rawOverallPeople;
+  const overallRemaining = overallHc > 0 ? Math.max(0, overallHc - rawOverallPeople) : 0;
+  const overallPct = overallHc > 0 ? Math.min(100, (rawOverallPeople / overallHc * 100)) : null;
 
   let grandEvalBadge = `<span class="badge-eval badge-eval-none">—</span>`;
   let grandProgressFillClass = "none";
@@ -2476,7 +2483,7 @@ async function delRow(i) {
 let editIndex = -1;
 
 function populateEditSubUnit(dept, currentSubUnit) {
-  if (dept === "อื่นๆ" || !DEPARTMENTS[dept]) {
+  if (!dept || !DEPARTMENTS[dept]) {
     $("#editSubUnitGroup").classList.add("hidden");
     $("#editSubUnit").innerHTML = "";
     $("#editSubUnitOther").classList.add("hidden");
@@ -2572,8 +2579,8 @@ $("#editForm").onsubmit = async e => {
   const unitVal = $("#editUnit").value;
   const unit = unitVal === "อื่นๆ" ? `อื่นๆ: ${$("#editUnitOther").value.trim()}` : unitVal;
   let subUnit = null;
-  if (unitVal !== "อื่นๆ") {
-    const subVal = $("#editSubUnit").value;
+  const subVal = $("#editSubUnit")?.value;
+  if (subVal) {
     subUnit = subVal === "อื่นๆ" ? `อื่นๆ: ${$("#editSubUnitOther").value.trim()}` : subVal;
   }
   
@@ -2621,13 +2628,19 @@ $("#editForm").onsubmit = async e => {
 function syncUnits() {
   const deptKeys = Object.keys(DEPARTMENTS);
   UNITS.length = 0;
-  UNITS.push(...deptKeys, "อื่นๆ");
+  for (const k of deptKeys) {
+    if (!UNITS.includes(k)) UNITS.push(k);
+  }
+  if (!UNITS.includes("อื่นๆ")) UNITS.push("อื่นๆ");
   renderUnits();
 }
 
 const loadHeadcount = async () => {
   try {
-    const r = await fetch("/api/headcount");
+    const r = await fetch(`/api/headcount?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache, no-store, must-revalidate" }
+    });
     if (!r.ok) throw new Error(await errMsg(r));
     const data = await r.json();
     if (data) {
@@ -2643,6 +2656,11 @@ const loadHeadcount = async () => {
         Object.assign(HEADCOUNT, data.headcount);
       }
       if (data.total) TOTAL_HEADCOUNT = data.total;
+      try {
+        if (typeof localStorage !== "undefined" && localStorage) {
+          localStorage.setItem("energysave_headcount", JSON.stringify(data));
+        }
+      } catch {}
       syncUnits();
     }
   } catch (err) {
