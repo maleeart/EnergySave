@@ -35,10 +35,11 @@ async function handleSummaryExport(all, hcData, res) {
   const effectiveTotal = hcData?.total ?? DEFAULT_TOTAL;
 
   const personId = r => (r.empid && r.empid !== "-" && r.empid !== "(ลูกจ้าง)") ? `emp:${String(r.empid).trim()}` : `contractor:${(r.name || "").trim()}_${(r.unit || "").trim()}`;
-  const totalPeople = new Set(all.map(personId)).size;
+  const rawTotalPeople = new Set(all.map(personId)).size;
   const totalHc = effectiveTotal;
-  const totalRemaining = totalHc > 0 ? Math.max(0, totalHc - totalPeople) : 0;
-  const overallPct = totalHc > 0 ? +(totalPeople / totalHc * 100).toFixed(1) : 0;
+  const totalPeople = totalHc > 0 ? Math.min(rawTotalPeople, totalHc) : rawTotalPeople;
+  const totalRemaining = totalHc > 0 ? Math.max(0, totalHc - rawTotalPeople) : 0;
+  const overallPct = totalHc > 0 ? Math.min(100, +(rawTotalPeople / totalHc * 100).toFixed(1)) : 0;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น กฟผ.";
@@ -122,10 +123,11 @@ async function handleSummaryExport(all, hcData, res) {
   allDeptsToRender.forEach((dept) => {
     const isOther = dept === "อื่นๆ";
     const dRows = isOther ? otherRows : all.filter(r => r.unit === dept);
-    const dPeople = new Set(dRows.map(personId)).size;
+    const rawDPeople = new Set(dRows.map(personId)).size;
     const targetHc = isOther ? 0 : (departments[dept]?.headcount ?? HEADCOUNT[dept] ?? 0);
-    const dRemaining = targetHc > 0 ? Math.max(0, targetHc - dPeople) : 0;
-    const dPct = targetHc > 0 ? +(dPeople / targetHc * 100).toFixed(1) : (dPeople > 0 ? 100 : 0);
+    const dPeople = targetHc > 0 ? Math.min(rawDPeople, targetHc) : rawDPeople;
+    const dRemaining = targetHc > 0 ? Math.max(0, targetHc - rawDPeople) : 0;
+    const dPct = targetHc > 0 ? Math.min(100, +(rawDPeople / targetHc * 100).toFixed(1)) : (rawDPeople > 0 ? 100 : 0);
 
     const dDivs = isOther ? {} : (departments[dept]?.divisions || {});
     const divNames = isOther ? [] : [...new Set([...Object.keys(dDivs), ...dRows.filter(r => r.subUnit).map(r => r.subUnit)])].sort();
@@ -160,10 +162,11 @@ async function handleSummaryExport(all, hcData, res) {
     // Division rows
     divNames.forEach((divName) => {
       const divRows = dRows.filter(r => r.subUnit === divName);
-      const divPeople = new Set(divRows.map(personId)).size;
+      const rawDivPeople = new Set(divRows.map(personId)).size;
       const divTargetHc = dDivs[divName] ?? 0;
-      const divRemaining = divTargetHc > 0 ? Math.max(0, divTargetHc - divPeople) : 0;
-      const divPct = divTargetHc > 0 ? +(divPeople / divTargetHc * 100).toFixed(1) : (divPeople > 0 ? 100 : 0);
+      const divPeople = divTargetHc > 0 ? Math.min(rawDivPeople, divTargetHc) : rawDivPeople;
+      const divRemaining = divTargetHc > 0 ? Math.max(0, divTargetHc - rawDivPeople) : 0;
+      const divPct = divTargetHc > 0 ? Math.min(100, +(rawDivPeople / divTargetHc * 100).toFixed(1)) : (rawDivPeople > 0 ? 100 : 0);
       const divCompColor = divTargetHc > 0 ? (divPct >= 80 ? "FF059669" : divPct >= 50 ? "FFD97706" : "FFDC2626") : "FF64748B";
 
       const divRow = ws.addRow([
@@ -226,9 +229,10 @@ export default async function handler(req, res) {
     .filter(r => !unit || r.unit === unit)
     .filter(r => !q || r.name.toLowerCase().includes(q) || r.empid.toLowerCase().includes(q));
 
-  const participated = new Set(rows.map(r => r.empid)).size;
+  const rawParticipated = new Set(rows.map(r => r.empid)).size;
   const currentHeadcount = unit ? (HEADCOUNT[unit] ?? 0) : effectiveTotal;
-  const pct = currentHeadcount ? +(participated / currentHeadcount * 100).toFixed(1) : null;
+  const participated = currentHeadcount ? Math.min(rawParticipated, currentHeadcount) : rawParticipated;
+  const pct = currentHeadcount ? Math.min(100, +(rawParticipated / currentHeadcount * 100).toFixed(1)) : null;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น กฟผ.";

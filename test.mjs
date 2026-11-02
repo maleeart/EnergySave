@@ -122,6 +122,12 @@ HEADCOUNT["อบค."] = 10;
 c = coverage([r("1","อบค."), r("2","อบค.")], "อบค.");
 assert.equal(c.total, 10);
 assert.equal(c.pct, 20, "2 จาก 10 คน ต้องได้ 20%");
+
+// กรณีผู้เข้าร่วมเกินเป้าหมาย (เช่น มีลูกจ้างร่วมทำ) ต้อง Cap ไม่เกิน 100% และยอดคนไม่เกินเป้าหมาย
+HEADCOUNT["อบค."] = 2;
+c = coverage([r("1","อบค."), r("2","อบค."), r("3","อบค.")], "อบค.");
+assert.equal(c.people, 2, "ผู้ประเมินเกินเป้าหมายต้องถูก Cap เท่ากับเป้าหมาย (2 คน)");
+assert.equal(c.pct, 100, "ร้อยละผู้ประเมินเกินเป้าต้องไม่เกิน 100%");
 HEADCOUNT["อบค."] = 0;
 
 // --- export Excel: สร้างไฟล์จริงแล้วอ่านกลับ ตรวจว่าฟอนต์/ความกว้าง/ข้อมูลครบ ---
@@ -201,6 +207,45 @@ assert.equal(grandSummaryRow.getCell(1).value, "ภาพรวมทั้ง�
 assert.equal(grandSummaryRow.getCell(3).value, 1990, "กำลังพลรวมต้องเป็น 1990");
 assert.equal(grandSummaryRow.getCell(4).value, 2, "ผู้เข้าร่วมประเมินรวมต้องเป็น 2");
 assert.equal(grandSummaryRow.getCell(5).value, 1988, "ยังไม่ทำต้องเป็น 1990 - 2 = 1988");
+
+// ตรวจสอบกรณีผู้ประเมินเกินเป้าหมาย (เช่น มีลูกจ้างเข้ามาร่วมทำ) ใน summary export ต้อง Cap เท่าเป้าหมาย และ 100.0%
+const summaryOverChunks = [];
+const soxres = {
+  setHeader(k, v){ (this.h ??= {})[k] = v; },
+  status(c){ this.code = c; return this; },
+  json(b){ this.body = b; return this; },
+  send(buf){ summaryOverChunks.push(buf); },
+};
+globalThis.__blobMock = [
+  {name: "คนที่ 1", empid: "1", unit: "ฝ่ายทดสอบ", subUnit: "กองทดสอบ", scores: [1,2,3,4,0,1], at: new Date().toISOString()},
+  {name: "คนที่ 2", empid: "2", unit: "ฝ่ายทดสอบ", subUnit: "กองทดสอบ", scores: [1,2,3,4,0,1], at: new Date().toISOString()},
+  {name: "คนที่ 3 (ลูกจ้าง)", empid: "(ลูกจ้าง)", unit: "ฝ่ายทดสอบ", subUnit: "กองทดสอบ", scores: [1,2,3,4,0,1], at: new Date().toISOString()},
+];
+globalThis.__headcountMock = {
+  departments: {
+    "ฝ่ายทดสอบ": {
+      headcount: 2,
+      divisions: { "กองทดสอบ": 2 }
+    }
+  },
+  total: 2
+};
+await exportHandler({headers: {"x-admin-password": "M@lee8888"}, query: { type: "summary" }}, soxres);
+const wbOver = new ExcelJS.Workbook();
+await wbOver.xlsx.load(summaryOverChunks[0]);
+const wsOver = wbOver.getWorksheet("สรุปความก้าวหน้ารายฝ่าย-กอง");
+const overGrandRow = wsOver.getRow(4);
+assert.equal(overGrandRow.getCell(3).value, 2, "เป้าหมาย 2 คน");
+assert.equal(overGrandRow.getCell(4).value, 2, "ทำจริง 3 คน แต่ต้อง Cap เหลือ 2 คน");
+assert.equal(overGrandRow.getCell(5).value, 0, "คงเหลือต้องเป็น 0 คน");
+assert.equal(overGrandRow.getCell(6).value, "100.0%", "ร้อยละต้อง Cap ไม่เกิน 100.0%");
+const overDeptRow = wsOver.getRow(5);
+assert.equal(overDeptRow.getCell(3).value, 2, "เป้าหมายฝ่าย 2 คน");
+assert.equal(overDeptRow.getCell(4).value, 2, "ทำจริงฝ่าย 3 คน แต่ต้อง Cap เหลือ 2 คน");
+assert.equal(overDeptRow.getCell(5).value, 0, "คงเหลือฝ่ายต้องเป็น 0 คน");
+assert.equal(overDeptRow.getCell(6).value, "100.0%", "ร้อยละฝ่ายต้อง Cap ไม่เกิน 100.0%");
+delete globalThis.__blobMock;
+delete globalThis.__headcountMock;
 // --- update: ต้องแอนมินเท่านั้น และข้อมูลต้องถูกต้อง ---
 const updateHandler = (await import("./api/update.js")).default;
 const mockPerson = {
