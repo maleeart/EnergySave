@@ -9,7 +9,7 @@ const call = (handler, req) => new Promise(done => {
   handler({ method: "POST", headers: {}, ...req }, res);
 });
 
-const ok = {name: "สมชาย ใจดี", empid: "12345", unit: "อบค.", scores: [4,3,2,1,0,4]};
+const ok = {name: "สมชาย ใจดี", empid: "12345", unit: "อบค.", subUnit: "กมน-ธ.", scores: [4,3,2,1,0,4]};
 
 // --- submit: ต้องปฏิเสธข้อมูลที่ไม่ถูกต้อง ---
 assert.equal((await call(submit, {method: "GET"})).code, 405, "GET ต้องถูกปฏิเสธ");
@@ -20,6 +20,10 @@ for (const [label, body] of [
   ["ชื่อยาวเกิน",        {...ok, name: "ก".repeat(101)}],
   ["ไม่มีรหัสพนักงาน",   {...ok, empid: ""}],
   ["สังกัดผิดชนิด",      {...ok, unit: 123}],
+  ["ไม่มีสังกัดฝ่าย",    {...ok, unit: ""}],
+  ["subUnit ว่าง",       {...ok, subUnit: ""}],
+  ["subUnit เป็น null",  {...ok, subUnit: null}],
+  ["ไม่มี subUnit",      {name: "สมชาย ใจดี", empid: "12345", unit: "อบค.", scores: [4,3,2,1,0,4]}],
   ["คะแนนไม่ครบ 6 ข้อ",  {...ok, scores: [4,3,2,1,0]}],
   ["คะแนนเกินช่วง 0-4",  {...ok, scores: [5,3,2,1,0,4]}],
   ["คะแนนติดลบ",        {...ok, scores: [-1,3,2,1,0,4]}],

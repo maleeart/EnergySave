@@ -1113,6 +1113,7 @@ renderUnits();
 
 $("#units").onchange = e => {
   const selected = e.target.value;
+  $("#units").closest(".card")?.querySelector(".err")?.classList.remove("on");
   const isOther = selected === "อื่นๆ";
   $("#unitOther").classList.toggle("hidden", !isOther);
   $("#unitOther").required = isOther;
@@ -1123,6 +1124,7 @@ $("#units").onchange = e => {
 };
 
 $("#subUnits").onchange = e => {
+  $("#subUnitsCard")?.querySelector(".err")?.classList.remove("on");
   const isOther = e.target.value === "อื่นๆ";
   $("#subUnitOther").classList.toggle("hidden", !isOther);
   $("#subUnitOther").required = isOther;
@@ -1170,6 +1172,31 @@ function valid(form){
     card.querySelector(".err")?.classList.toggle("on", bad);
     if (bad && ok) { card.scrollIntoView({behavior:"smooth", block:"center"}); ok = false; }
   });
+
+  // สำหรับแบบฟอร์มลงทะเบียนหน้าแรก ตรวจสอบสังกัดฝ่ายและกองอย่างเข้มงวด ห้ามเว้นว่างหรือเป็น null
+  if (form.id === "p1") {
+    const unitChecked = form.querySelector("input[name=unit]:checked");
+    const uCard = $("#units")?.closest(".card");
+    const unitBad = !unitChecked || (unitChecked.value === "อื่นๆ" && !$("#unitOther")?.value.trim());
+    if (unitBad) {
+      uCard?.querySelector(".err")?.classList.add("on");
+      if (ok) { uCard?.scrollIntoView({behavior:"smooth", block:"center"}); ok = false; }
+    } else {
+      uCard?.querySelector(".err")?.classList.remove("on");
+    }
+
+    const subCard = $("#subUnitsCard");
+    const subChecked = form.querySelector("input[name=subUnit]:checked");
+    const subBad = !subChecked || (subChecked.value === "อื่นๆ" && !$("#subUnitOther")?.value.trim());
+    if (subBad) {
+      subCard?.classList.remove("hidden");
+      subCard?.querySelector(".err")?.classList.add("on");
+      if (ok) { subCard?.scrollIntoView({behavior:"smooth", block:"center"}); ok = false; }
+    } else {
+      subCard?.querySelector(".err")?.classList.remove("on");
+    }
+  }
+
   return ok;
 }
 
@@ -1199,19 +1226,37 @@ $("#p1").onsubmit = async e => {
   e.preventDefault();
   if (!valid(e.target)) return;
   const f = new FormData(e.target);
-  const unit = f.get("unit");
-  const subUnitVal = f.get("subUnit");
-  let subUnit = null;
-  if (subUnitVal) {
-    subUnit = subUnitVal === "อื่นๆ" ? `อื่นๆ: ${$("#subUnitOther").value.trim()}` : subUnitVal;
-  } else if (unit === "อื่นๆ") {
-    subUnit = "ทั่วไป";
+  const rawUnit = f.get("unit");
+  const unit = (rawUnit === "อื่นๆ") ? $("#unitOther").value.trim() : (rawUnit || "").trim();
+  const rawSubUnit = f.get("subUnit");
+  let subUnit = "";
+  if (rawSubUnit === "อื่นๆ") {
+    subUnit = $("#subUnitOther").value.trim() ? `อื่นๆ: ${$("#subUnitOther").value.trim()}` : "";
+  } else if (rawSubUnit) {
+    subUnit = rawSubUnit.trim();
   }
+
+  // ป้องกันเด็ดขาด: ต้องเลือกทั้งฝ่ายและกอง ไม่งั้นไม่ให้กดถัดไป
+  if (!unit) {
+    const uCard = $("#units")?.closest(".card");
+    uCard?.querySelector(".err")?.classList.add("on");
+    uCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  if (!subUnit) {
+    const sCard = $("#subUnitsCard");
+    sCard?.classList.remove("hidden");
+    sCard?.querySelector(".err")?.classList.add("on");
+    sCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
   const emptype = f.get("emptype");
   draft = {
     name: f.get("name").trim(),
     empid: emptype === "พนักงาน" ? f.get("empid")?.trim() || null : null,
-    unit: unit === "อื่นๆ" ? `อื่นๆ: ${$("#unitOther").value.trim()}` : unit,
+    unit: unit,
     subUnit: subUnit,
     type: emptype,
   };
@@ -1414,18 +1459,22 @@ $("#searchQ").oninput = render;
 function populateSubFilter(selDept) {
   const keep = $("#subFilter").value;
   let divisions = [];
+  const hasNullSubUnit = rows.some(r => (!selDept || r.unit === selDept) && (!r.subUnit || !r.subUnit.trim() || r.subUnit === "-" || r.subUnit === "ทั่วไป"));
   if (selDept && DEPARTMENTS[selDept]) {
     const defDivs = Object.keys(DEPARTMENTS[selDept].divisions || {});
-    const rowDivs = [...new Set(rows.filter(r => r.unit === selDept && r.subUnit).map(r => r.subUnit))];
+    const rowDivs = [...new Set(rows.filter(r => r.unit === selDept && r.subUnit && r.subUnit !== "-" && r.subUnit !== "ทั่วไป").map(r => r.subUnit))];
     divisions = [...new Set([...defDivs, ...rowDivs])];
   } else if (!selDept) {
     const allDefDivs = Object.values(DEPARTMENTS).flatMap(d => Object.keys(d.divisions || {}));
-    const allRowDivs = [...new Set(rows.filter(r => r.subUnit).map(r => r.subUnit))];
+    const allRowDivs = [...new Set(rows.filter(r => r.subUnit && r.subUnit !== "-" && r.subUnit !== "ทั่วไป").map(r => r.subUnit))];
     divisions = [...new Set([...allDefDivs, ...allRowDivs])];
   }
   divisions.sort();
+  if (hasNullSubUnit) {
+    divisions.push("ทั่วไป");
+  }
   $("#subFilter").innerHTML = `<option value="">ทุกกอง${selDept ? ` (ใน ${selDept})` : ""}</option>` +
-    divisions.map(d => `<option value="${d}">${d}</option>`).join("");
+    divisions.map(d => `<option value="${d}">${d === "ทั่วไป" ? "ทั่วไป (ไม่ระบุกอง)" : d}</option>`).join("");
   if (divisions.includes(keep)) {
     $("#subFilter").value = keep;
   } else {
@@ -1440,8 +1489,17 @@ function currentList(){
   const sq = ($("#searchQ").value || "").trim().toLowerCase();
   return rows
     .filter(r => !sel || r.unit === sel)
-    .filter(r => !subSel || r.subUnit === subSel)
-    .filter(r => !sq || r.name.toLowerCase().includes(sq) || (r.empid ?? "").toLowerCase().includes(sq));
+    .filter(r => {
+      if (!subSel) return true;
+      if (subSel === "ทั่วไป") return !r.subUnit || !r.subUnit.trim() || r.subUnit === "-" || r.subUnit === "ทั่วไป";
+      return r.subUnit === subSel;
+    })
+    .filter(r => !sq || 
+      (r.name && r.name.toLowerCase().includes(sq)) || 
+      (r.empid && String(r.empid).toLowerCase().includes(sq)) ||
+      (r.unit && r.unit.toLowerCase().includes(sq)) ||
+      ((r.subUnit || "ทั่วไป").toLowerCase().includes(sq))
+    );
 }
 
 const SHORT = ["นโยบาย","การจัดองค์กร","การกระตุ้นฯ","ระบบข้อมูล","ประชาสัมพันธ์","การลงทุน"];
@@ -1747,7 +1805,10 @@ function render(){
     MATRIX.map((m,i)=>`<th>${i+1}. ${m[0]}</th>`).join("") + `<th></th></tr>` +
     list.map(r => {
       const i = rows.indexOf(r);
-      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td><td>${r.subUnit ?? "—"}</td>` +
+      const subUnitDisplay = (!r.subUnit || !r.subUnit.trim() || r.subUnit === "-" || r.subUnit === "ทั่วไป")
+        ? `<span style="color:#d97706;font-weight:600;background:#fffbeb;padding:2px 6px;border-radius:4px;border:1px solid #fde68a;">ทั่วไป (ไม่ระบุกอง)</span>`
+        : r.subUnit;
+      return `<tr><td>${new Date(r.at).toLocaleString("th-TH")}</td><td>${r.name}</td><td>${r.empid ?? "(ลูกจ้าง)"}</td><td>${r.unit}</td><td>${subUnitDisplay}</td>` +
         r.scores.map(s=>`<td>${s}</td>`).join("") +
         `<td>` +
         `<button class="edit-btn" onclick="editRow(${i})">แก้ไข</button>` +
@@ -2578,10 +2639,21 @@ $("#editForm").onsubmit = async e => {
   const empid = type === "พนักงาน" ? $("#editEmpid").value.trim() : null;
   const unitVal = $("#editUnit").value;
   const unit = unitVal === "อื่นๆ" ? `อื่นๆ: ${$("#editUnitOther").value.trim()}` : unitVal;
-  let subUnit = null;
+  let subUnit = "";
   const subVal = $("#editSubUnit")?.value;
-  if (subVal) {
-    subUnit = subVal === "อื่นๆ" ? `อื่นๆ: ${$("#editSubUnitOther").value.trim()}` : subVal;
+  if (subVal === "อื่นๆ") {
+    subUnit = $("#editSubUnitOther").value.trim() ? `อื่นๆ: ${$("#editSubUnitOther").value.trim()}` : "";
+  } else if (subVal) {
+    subUnit = subVal.trim();
+  }
+
+  if (!unit || !unit.trim()) {
+    alert("กรุณาระบุสังกัดฝ่าย");
+    return;
+  }
+  if (!subUnit || !subUnit.trim()) {
+    alert("กรุณาระบุสังกัดกอง");
+    return;
   }
   
   const saveBtn = e.target.querySelector("button[type=submit]");
@@ -2841,11 +2913,13 @@ $("#addNewDeptBtn").onclick = () => {
   renderHeadcountManager();
 };
 
-$("#headcountBtn").onclick = () => {
+function openHeadcount() {
   workingDepts = JSON.parse(JSON.stringify(DEPARTMENTS));
   renderHeadcountManager();
   $("#headcountDialog").showModal();
-};
+}
+if (typeof window !== "undefined") window.openHeadcount = openHeadcount;
+$("#headcountBtn").onclick = openHeadcount;
 
 $("#headcountForm").onsubmit = async e => {
   e.preventDefault();

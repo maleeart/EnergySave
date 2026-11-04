@@ -10,16 +10,16 @@ export default async function handler(req, res) {
   const type = req.body?.type ?? "พนักงาน";
   if (!str(name, 100) || !str(unit, 120))
     return res.status(400).json({ error: "ข้อมูลผู้ตอบไม่ถูกต้อง" });
+  if (!str(subUnit, 120))
+    return res.status(400).json({ error: "กรุณาระบุสังกัดกอง" });
   // พนักงานต้องมี empid, ลูกจ้างไม่ต้องมี
   if (type === "พนักงาน" && !str(empid, 30))
     return res.status(400).json({ error: "กรุณากรอกรหัสพนักงาน" });
   if (!Array.isArray(scores) || scores.length !== 6 ||
       !scores.every(s => Number.isInteger(s) && s >= 0 && s <= 4))
     return res.status(400).json({ error: "คำตอบไม่ครบหรือไม่ถูกต้อง" });
-  if (subUnit !== undefined && subUnit !== null && subUnit !== "" && !str(subUnit, 120))
-    return res.status(400).json({ error: "ข้อมูลสังกัดกองไม่ถูกต้อง" });
 
-  const cleanSubUnit = str(subUnit, 120) ? subUnit.trim() : null;
+  const cleanSubUnit = subUnit.trim();
   const validOldUrl = (typeof oldUrl === "string" && (oldUrl.startsWith("https://") || oldUrl.startsWith("mock-url-"))) ? oldUrl : null;
 
   try {
