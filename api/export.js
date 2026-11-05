@@ -210,11 +210,133 @@ async function handleSummaryExport(all, hcData, res) {
   res.send(Buffer.from(await wb.xlsx.writeBuffer()));
 }
 
+async function handleDeptSummaryExport(all, hcData, res) {
+  const departments = (hcData?.departments && Object.keys(hcData.departments).length > 0)
+    ? hcData.departments
+    : DEFAULT_DEPARTMENTS;
+  const HEADCOUNT = (hcData?.headcount && Object.keys(hcData.headcount).length > 0)
+    ? hcData.headcount
+    : DEFAULT_HEADCOUNT;
+  const effectiveTotal = hcData?.total ?? DEFAULT_TOTAL;
+
+  const personId = r => (r.empid && r.empid !== "-" && r.empid !== "(ลูกจ้าง)") ? `emp:${String(r.empid).trim()}` : `contractor:${(r.name || "").trim()}_${(r.unit || "").trim()}`;
+  const rawTotalPeople = new Set(all.map(personId)).size;
+  const totalHc = effectiveTotal;
+  const totalPeople = totalHc > 0 ? Math.min(rawTotalPeople, totalHc) : rawTotalPeople;
+  const totalRemaining = totalHc > 0 ? Math.max(0, totalHc - rawTotalPeople) : 0;
+  const overallPct = totalHc > 0 ? Math.min(100, +(rawTotalPeople / totalHc * 100).toFixed(1)) : 0;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น กฟผ.";
+
+  const ws = wb.addWorksheet("สรุปภาพรวมรายฝ่าย", {
+    views: [{ state: "frozen", ySplit: 4 }],
+    pageSetup: { orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+
+  ws.columns = [
+    { key: "dept", width: 26 },
+    { key: "target", width: 18 },
+    { key: "done", width: 18 },
+    { key: "remaining", width: 22 },
+    { key: "pct", width: 16 },
+  ];
+
+  // 1. หัวรายงาน
+  const titleRow = ws.addRow(["แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น (สรุปภาพรวมรายฝ่าย)"]);
+  ws.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
+  titleRow.font = { ...FONT, size: 16, bold: true, color: { argb: "FFFFFFFF" } };
+  titleRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
+  titleRow.alignment = { horizontal: "center", vertical: "middle" };
+  titleRow.height = 36;
+  titleRow.eachCell(c => (c.border = BORDER));
+
+  // 2. วันที่
+  const dateStr = new Date().toLocaleDateString("th-TH", {
+    year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+  const subRow = ws.addRow([`ข้อมูล ณ วันที่: ${dateStr} น.`]);
+  ws.mergeCells(`A${subRow.number}:E${subRow.number}`);
+  subRow.font = { ...FONT, size: 12, italic: true, color: { argb: "FFDCE7F9" } };
+  subRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
+  subRow.alignment = { horizontal: "center", vertical: "middle" };
+  subRow.height = 22;
+  subRow.eachCell(c => (c.border = BORDER));
+
+  // 3. หัวตารางข้อมูล
+  const headerRow = ws.addRow([
+    "สังกัดฝ่าย",
+    "เป้าหมาย (คน)",
+    "ประเมินแล้ว (คน)",
+    "ยังไม่ทำ/คงเหลือ (คน)",
+    "% ประเมินแล้ว"
+  ]);
+  styleHeader(headerRow);
+  headerRow.height = 30;
+
+  // 4. แถวสรุปภาพรวมทั้งหมด (Grand Total)
+  const grandRow = ws.addRow([
+    "ภาพรวมทั้งหมด (รวมทุกฝ่าย)",
+    totalHc,
+    totalPeople,
+    totalRemaining,
+    overallPct + "%"
+  ]);
+  grandRow.font = { ...FONT, bold: true, size: 13, color: { argb: NAVY } };
+  grandRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: YELLOW } };
+  grandRow.height = 26;
+  grandRow.alignment = { vertical: "middle" };
+  grandRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+  grandRow.eachCell(c => (c.border = BORDER));
+
+  // 5. แถวข้อมูลแต่ละฝ่าย
+  const deptList = Object.keys(HEADCOUNT);
+  deptList.forEach((deptKey, idx) => {
+    const deptTarget = HEADCOUNT[deptKey] ?? 0;
+    const deptRows = all.filter(r => r.unit === deptKey);
+    const rawDeptDone = new Set(deptRows.map(personId)).size;
+    const deptDone = deptTarget > 0 ? Math.min(rawDeptDone, deptTarget) : rawDeptDone;
+    const deptRem = deptTarget > 0 ? Math.max(0, deptTarget - rawDeptDone) : 0;
+    const deptPct = deptTarget > 0 ? Math.min(100, +(rawDeptDone / deptTarget * 100).toFixed(1)) : 0;
+
+    const row = ws.addRow([
+      deptKey,
+      deptTarget,
+      deptDone,
+      deptRem,
+      deptPct + "%"
+    ]);
+    row.font = { ...FONT, bold: true, size: 12 };
+    row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: idx % 2 === 0 ? "FFFFFFFF" : ROW_BG } };
+    row.height = 24;
+    row.alignment = { vertical: "middle" };
+    row.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
+    row.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+    row.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+    row.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+    row.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+    row.eachCell(c => (c.border = BORDER));
+  });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("content-disposition", `attachment; filename="EnergySave_Dept_Summary_${stamp}.xlsx"`);
+  res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+}
+
 export default async function handler(req, res) {
   if (!authed(req, res)) return;
 
   const all = await readAll();
   const hcData = await readHeadcount();
+
+  if (req.query?.type === "dept_summary" || req.query?.mode === "dept") {
+    return await handleDeptSummaryExport(all, hcData, res);
+  }
 
   if (req.query?.type === "summary" || req.query?.mode === "progress") {
     return await handleSummaryExport(all, hcData, res);
