@@ -883,15 +883,15 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <div id="admin-pdf-modal-header-bar" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid var(--line);padding-bottom:0.85rem;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
       <div>
         <h3 style="margin:0;color:var(--blue-d);font-size:1.15rem;display:flex;align-items:center;gap:0.45rem;">
-          <i data-lucide="file-text" style="color:#1b4c9e;width:22px;height:22px;"></i> รายงานสรุปผลสำหรับผู้บริหาร (Executive PDF Report)
+          <i data-lucide="file-text" style="color:#1b4c9e;width:22px;height:22px;"></i> รายงานสรุปผลภาพรวม (PDF Report)
         </h3>
         <p style="margin:0.2rem 0 0 0;font-size:0.82rem;color:var(--muted);">
-          เอกสารสรุปความก้าวหน้า • พิมพ์หรือบันทึกเป็น PDF คุณภาพสูง (คมชัด หัวข้อครบถ้วน ไม่ตกหล่น)
+          เอกสารสรุปความก้าวหน้า • คลิกดาวน์โหลดไฟล์ PDF คุณภาพสูง (คมชัด หัวข้อครบถ้วน ไม่ตกหล่น)
         </p>
       </div>
       <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
-        <button class="primary" style="background:#1b4c9e;border-color:#1b4c9e;font-size:0.88rem;padding:0.5rem 1.1rem;font-weight:700;display:flex;align-items:center;gap:0.45rem;" onclick="printExecutiveReportNow()">
-          <i data-lucide="printer" style="width:16px;height:16px;"></i> พิมพ์ / บันทึกเป็น PDF (คุณภาพสูง)
+        <button id="pdf-download-btn" class="primary" style="background:#1b4c9e;border-color:#1b4c9e;font-size:0.88rem;padding:0.5rem 1.1rem;font-weight:700;display:flex;align-items:center;gap:0.45rem;" onclick="downloadExecutivePdfNow()">
+          <i data-lucide="download" style="width:16px;height:16px;"></i> ดาวน์โหลดไฟล์ PDF (คุณภาพสูง)
         </button>
         <button class="ghost" style="padding:4px 8px;font-size:16px;cursor:pointer;" onclick="closeAdminPdfModal()" title="ปิดหน้าต่าง">✕</button>
       </div>
@@ -2239,7 +2239,10 @@ function ensureHtml2PdfLoaded() {
   });
 }
 
+let currentPdfOptions = {};
+
 function openExecutivePdfModal(customData = null, options = {}) {
+  currentPdfOptions = options || {};
   const summaryData = customData || getAffiliationSummaryData();
   const modal = $("#admin-pdf-modal");
   const contentArea = $("#pdf-report-content");
@@ -2262,18 +2265,29 @@ function closeAdminPdfModal() {
   if (modal) modal.classList.add("hidden");
 }
 
-async function downloadExecutivePdfNow() {
-  printExecutiveReportNow();
-}
-
-function printExecutiveReportNow() {
+function downloadExecutivePdfNow() {
   const modal = $("#admin-pdf-modal");
   if (modal && modal.classList.contains("hidden")) {
     modal.classList.remove("hidden");
   }
+  const origTitle = document.title;
+  const isDeptOnly = !!(currentPdfOptions && currentPdfOptions.deptOnly);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const fileName = isDeptOnly ? `EnergySave_Summary_DeptOnly_${dateStr}` : `EnergySave_Summary_Report_${dateStr}`;
+  
+  document.title = fileName;
+  showToast("กำลังเปิดหน้าต่างดาวน์โหลด PDF (เลือก 'Save as PDF' เพื่อบันทึกไฟล์คุณภาพสูง)... 📄");
+
   setTimeout(() => {
     window.print();
+    setTimeout(() => {
+      document.title = origTitle;
+    }, 1500);
   }, 150);
+}
+
+function printExecutiveReportNow() {
+  downloadExecutivePdfNow();
 }
 
 function openPrintSummaryWindow(pdfHtml) {
@@ -2304,7 +2318,7 @@ function openPrintSummaryWindow(pdfHtml) {
           <span style="font-size: 14px; color: #1e40af; font-weight: 600;">
             🖨️ หน้าต่างพิมพ์เอกสาร: เลือกปลายทางเป็น <b>"บันทึกเป็น PDF" (Save as PDF)</b> เพื่อดาวน์โหลดไฟล์
           </span>
-          <button onclick="window.print()" style="padding: 6px 14px; background: #1b4c9e; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">พิมพ์ / บันทึก PDF</button>
+          <button onclick="window.print()" style="padding: 6px 14px; background: #1b4c9e; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">ดาวน์โหลด / บันทึก PDF</button>
         </div>
         ${pdfHtml}
       </div>
@@ -2371,7 +2385,7 @@ function generateSummaryPdfHtml(data, options = {}) {
                         แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น (สรุปภาพรวมรายฝ่าย)
                     </div>
                     <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
-                        EGAT Sainoi EnergySave Portal • เอกสารสรุปสำหรับผู้บริหาร
+                        EGAT Sainoi EnergySave Portal
                     </div>
                 </div>
             </div>
@@ -2454,7 +2468,7 @@ function generateSummaryPdfHtml(data, options = {}) {
                       แบบประเมินสถานภาพการจัดการพลังงานเบื้องต้น
                   </div>
                   <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
-                      EGAT Sainoi EnergySave Portal • เอกสารสรุปสำหรับผู้บริหาร
+                      EGAT Sainoi EnergySave Portal
                   </div>
               </div>
           </div>
