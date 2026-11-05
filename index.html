@@ -883,20 +883,17 @@ dialog::backdrop{background:rgba(18,53,102,.55);backdrop-filter:blur(2px)}
     <div id="admin-pdf-modal-header-bar" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid var(--line);padding-bottom:0.85rem;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
       <div>
         <h3 style="margin:0;color:var(--blue-d);font-size:1.15rem;display:flex;align-items:center;gap:0.45rem;">
-          <i data-lucide="file-text" style="color:#e11d48;width:22px;height:22px;"></i> รายงานสรุปผลสำหรับผู้บริหาร (Executive PDF Report)
+          <i data-lucide="file-text" style="color:#1b4c9e;width:22px;height:22px;"></i> รายงานสรุปผลสำหรับผู้บริหาร (Executive PDF Report)
         </h3>
         <p style="margin:0.2rem 0 0 0;font-size:0.82rem;color:var(--muted);">
-          เอกสารสรุปความก้าวหน้ารายฝ่าย/กอง • ดาวน์โหลดไฟล์ .pdf หรือพิมพ์/บันทึก PDF คุณภาพสูงได้ทันที
+          เอกสารสรุปความก้าวหน้า • พิมพ์หรือบันทึกเป็น PDF คุณภาพสูง (คมชัด หัวข้อครบถ้วน ไม่ตกหล่น)
         </p>
       </div>
       <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
-        <button id="pdf-download-btn" class="primary" style="background:#e11d48;border-color:#e11d48;font-size:0.85rem;padding:0.45rem 0.95rem;" onclick="downloadExecutivePdfNow()">
-          <i data-lucide="download" style="width:15px;height:15px;"></i> ดาวน์โหลดไฟล์ PDF (.pdf)
+        <button class="primary" style="background:#1b4c9e;border-color:#1b4c9e;font-size:0.88rem;padding:0.5rem 1.1rem;font-weight:700;display:flex;align-items:center;gap:0.45rem;" onclick="printExecutiveReportNow()">
+          <i data-lucide="printer" style="width:16px;height:16px;"></i> พิมพ์ / บันทึกเป็น PDF (คุณภาพสูง)
         </button>
-        <button class="primary" style="background:var(--blue);border-color:var(--blue);font-size:0.85rem;padding:0.45rem 0.95rem;" onclick="printExecutiveReportNow()">
-          <i data-lucide="printer" style="width:15px;height:15px;"></i> พิมพ์ / บันทึกเป็น PDF (คมชัดสูง)
-        </button>
-        <button class="ghost" style="padding:4px 8px;font-size:16px;cursor:pointer;" onclick="closeAdminPdfModal()">✕</button>
+        <button class="ghost" style="padding:4px 8px;font-size:16px;cursor:pointer;" onclick="closeAdminPdfModal()" title="ปิดหน้าต่าง">✕</button>
       </div>
     </div>
 
@@ -2266,72 +2263,7 @@ function closeAdminPdfModal() {
 }
 
 async function downloadExecutivePdfNow() {
-  const reportElem = $("#pdf-report-content");
-  if (!reportElem) {
-    showToast("ไม่พบเนื้อหารายงานสำหรับดาวน์โหลด", true);
-    return;
-  }
-
-  const downloadBtn = $("#pdf-download-btn");
-  const originalBtnText = downloadBtn ? downloadBtn.innerHTML : "";
-  if (downloadBtn) {
-    downloadBtn.disabled = true;
-    downloadBtn.innerHTML = `กำลังบันทึก PDF...`;
-  }
-
-  showToast("กำลังประมวลผลไฟล์ PDF สรุปยอด... 📄");
-
-  await ensureHtml2PdfLoaded();
-
-  if (typeof window.html2pdf !== "undefined") {
-    try {
-      const scrollWrapper = $("#pdf-preview-scroll-wrapper");
-      if (scrollWrapper) scrollWrapper.scrollTop = 0;
-
-      const fileName = `EnergySave_Summary_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
-      const opt = {
-        margin: [10, 8, 10, 8],
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          scrollY: 0,
-          scrollX: 0
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait"
-        },
-        pagebreak: { mode: ["css", "legacy"] }
-      };
-
-      await window.html2pdf().set(opt).from(reportElem).save();
-      showToast("ดาวน์โหลดไฟล์ PDF เรียบร้อยแล้ว 📊");
-    } catch (err) {
-      console.error("Direct html2pdf error:", err);
-      showToast("สคริปต์ดาวน์โหลดขัดข้อง กำลังเปิดหน้าต่างพิมพ์เป็น PDF แทน...", true);
-      setTimeout(() => {
-        printExecutiveReportNow();
-      }, 600);
-    } finally {
-      if (downloadBtn) {
-        downloadBtn.disabled = false;
-        downloadBtn.innerHTML = originalBtnText;
-        if (window.lucide) lucide.createIcons();
-      }
-    }
-  } else {
-    showToast("เปิดหน้าต่างพิมพ์รายงาน (เลือก Save as PDF ได้ทันที) 🖨️");
-    printExecutiveReportNow();
-    if (downloadBtn) {
-      downloadBtn.disabled = false;
-      downloadBtn.innerHTML = originalBtnText;
-      if (window.lucide) lucide.createIcons();
-    }
-  }
+  printExecutiveReportNow();
 }
 
 function printExecutiveReportNow() {
